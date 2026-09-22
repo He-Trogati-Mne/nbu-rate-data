@@ -60,7 +60,6 @@ async function saveCrypto() {
         console.error('FAIL crypto markets: ' + e.message);
     }
 
-    // BTC — 1 год дневной истории
     let btcHistory = {};
     try {
         const url = 'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily';
