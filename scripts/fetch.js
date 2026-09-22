@@ -3,93 +3,67 @@ import path from 'node:path';
 
 await fs.mkdir('data', { recursive: true });
 
-async function save(name, url, asText = false) {
+async function save(name, url) {
     try {
-        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (nbu-rate-bot)' } });
+        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = asText ? await res.text() : await res.json();
-        await fs.writeFile(
-            path.join('data', name + '.json'),
-            JSON.stringify({ updatedAt: new Date().toISOString(), data }, null, 2)
-        );
+        const data = await res.json();
+        await fs.writeFile(path.join('data', name + '.json'),
+            JSON.stringify({ updatedAt: new Date().toISOString(), data }, null, 2));
         console.log('OK ' + name);
-        return true;
     } catch (e) {
         console.error('FAIL ' + name + ': ' + e.message);
-        return false;
     }
 }
 
 async function saveBitcoin() {
     const sources = [
-        {
-            url: 'https://whitebit.com/api/v4/public/ticker',
-            parse: (data) => {
-                const ticker = data.result?.BTC_USDT || data.result?.BTC_UAH;
-                if (!ticker) throw new Error('No BTC ticker');
-                return {
-                    price: parseFloat(ticker.last_price || ticker.close),
-                    change: parseFloat(ticker.change || 0)
-                };
-            }
-        },
-        {
-            url: 'https://api.coinlore.net/api/ticker/?id=90',
-            parse: (data) => {
-                const item = Array.isArray(data) ? data[0] : data;
-                if (!item) throw new Error('No data');
-                return {
-                    price: parseFloat(item.price_usd),
-                    change: parseFloat(item.percent_change_24h || 0)
-                };
-            }
-        },
-        {
-            url: 'https://api.coinpaprika.com/v1/tickers/btc-bitcoin',
-            parse: (data) => {
-                if (!data) throw new Error('No data');
-                return {
-                    price: data.quotes?.USD?.price || 0,
-                    change: data.quotes?.USD?.percent_change_24h || 0
-                };
-            }
-        }
+        { url: 'https://whitebit.com/api/v4/public/ticker',
+          parse: (d) => { const t = d.result?.BTC_USDT; return { price: +t.last_price, change: +t.change }; } },
+        { url: 'https://api.coinlore.net/api/ticker/?id=90',
+          parse: (d) => { const i = Array.isArray(d) ? d[0] : d; return { price: +i.price_usd, change: +i.percent_change_24h }; } },
+        { url: 'https://api.coinpaprika.com/v1/tickers/btc-bitcoin',
+          parse: (d) => ({ price: d.quotes.USD.price, change: d.quotes.USD.percent_change_24h }) }
     ];
 
+    let ticker = null;
     for (const src of sources) {
         try {
-            const res = await fetch(src.url, { headers: { 'User-Agent': 'Mozilla/5.0 (nbu-rate-bot)' } });
+            const res = await fetch(src.url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            const raw = await res.json();
-            const parsed = src.parse(raw);
-            await fs.writeFile(
-                path.join('data', 'kuna.json'),
-                JSON.stringify({
-                    updatedAt: new Date().toISOString(),
-                    data: { bitcoin: { uah: parsed.price, uah_24h_change: parsed.change } }
-                }, null, 2)
-            );
-            console.log('OK kuna (via ' + src.url + ')');
-            return;
-        } catch (e) {
-            console.error('FAIL kuna (' + src.url + '): ' + e.message);
-        }
+            ticker = src.parse(await res.json());
+            if (ticker.price) break;
+        } catch (e) { console.error('  ' + src.url + ': ' + e.message); }
     }
-    console.error('FAIL kuna: all sources failed');
+
+    // 1 год истории от CoinGecko
+    let history = {};
+    try {
+        const res = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        if (res.ok) {
+            const json = await res.json();
+            (json.prices || []).forEach(([ts, price]) => {
+                const iso = new Date(ts).toISOString().slice(0, 10);
+                history[iso] = { BTC: price };
+            });
+        }
+    } catch (e) { console.error('  history: ' + e.message); }
+
+    if (!ticker || !ticker.price) {
+        console.error('FAIL kuna: no data');
+        return;
+    }
+
+    await fs.writeFile(path.join('data', 'kuna.json'), JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        data: { bitcoin: { uah: ticker.price, uah_24h_change: ticker.change }, history }
+    }, null, 2));
+    console.log('OK kuna (history points: ' + Object.keys(history).length + ')');
 }
 
-// НБУ
-await save('nbu', 'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
-
-// ПриватБанк
+await save('nbu',    'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
 await save('privat', 'https://api.privatbank.ua/p24api/pubinfo?exchange&json&coursid=11');
-
-// МоноБанк
-await save('mono', 'https://api.monobank.ua/bank/currency');
-
-// LiqPay (XML)
-await save('liqpay', 'https://www.liqpay.ua/api/3/checkout/currency-exchange', true);
-
+await save('mono',   'https://api.monobank.ua/bank/currency');
 await saveBitcoin();
 
 console.log('Done.');
