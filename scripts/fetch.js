@@ -7,7 +7,7 @@ async function save(name, url) {
     try {
         const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
+        const data = await res.text(); // Для LiqPay (XML) и Kuna (JSON) будем брать текст
         await fs.writeFile(
             path.join('data', name + '.json'),
             JSON.stringify({ updatedAt: new Date().toISOString(), data }, null, 2)
@@ -18,12 +18,16 @@ async function save(name, url) {
     }
 }
 
-await Promise.all([
-    save('nbu',    'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json'),
-    save('privat', 'https://api.privatbank.ua/p24api/pubinfo?exchange&json&coursid=11'),
-    save('mono',   'https://api.monobank.ua/bank/currency'),
-    save('liqpay', 'https://api.liqpay.ua/doc/api/public/exchange?json'),
-    save('kuna',   'https://api.kuna.io/v4/markets/public/tickers?pairs=BTC_UAH')
-]);
+// ... (конец функции save)
+
+await save('nbu',    'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
+await save('privat', 'https://api.privatbank.ua/p24api/pubinfo?exchange&json&coursid=11');
+await save('mono',   'https://api.monobank.ua/bank/currency');
+
+// LiqPay — официальный эндпоинт возвращает XML (парсим его на стороне сайта)
+await save('liqpay', 'https://www.liqpay.ua/api/3/checkout/currency-exchange');
+
+// Kuna — используем API v3, который точно работает (v4 часто отдаёт 404)
+await save('kuna',   'https://api.kuna.io/v3/tickers?symbols=btcuah');
 
 console.log('Done.');
