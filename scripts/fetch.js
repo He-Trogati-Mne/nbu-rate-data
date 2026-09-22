@@ -20,7 +20,6 @@ async function save(name, url, asText = false) {
     }
 }
 
-// Попытка загрузить биткоин с разных источников
 async function saveBitcoin() {
     const sources = [
         {
@@ -91,7 +90,6 @@ await save('mono', 'https://api.monobank.ua/bank/currency');
 // LiqPay (XML)
 await save('liqpay', 'https://www.liqpay.ua/api/3/checkout/currency-exchange', true);
 
-// Биткоин — с резервными источниками
 await saveBitcoin();
 
 console.log('Done.');
