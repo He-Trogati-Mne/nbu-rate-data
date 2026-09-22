@@ -16,14 +16,14 @@ async function save(name, url) {
     }
 }
 
-async function fetchWithRetry(url, retries = 3) {
-    let delay = 5000;
+async function fetchWithRetry(url, retries = 4) {
+    let delay = 4000;
     for (let i = 0; i < retries; i++) {
         const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (nbu-rate-bot)' } });
         if (res.status === 429) {
-            console.log('   429 → wait ' + (delay / 1000) + 's, retry ' + (i + 1) + '/' + retries);
+            console.log('    429 → wait ' + (delay / 1000) + 's, retry ' + (i + 1) + '/' + retries);
             await new Promise(r => setTimeout(r, delay));
-            delay *= 2;
+            delay *= 1.6;
             continue;
         }
         return res;
@@ -32,7 +32,7 @@ async function fetchWithRetry(url, retries = 3) {
 }
 
 async function saveCrypto() {
-    const IDs = [
+    const IDS = [
         'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
         'usd-coin', 'ripple', 'cardano', 'dogecoin', 'avalanche-2',
         'tron', 'the-open-network', 'chainlink', 'polkadot', 'litecoin'
@@ -40,67 +40,72 @@ async function saveCrypto() {
 
     let coins = [];
     try {
-        const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${IDs.join(',')}&sparkline=false&price_change_percentage=24h`;
+        const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${IDS.join(',')}&sparkline=true&price_change_percentage=24h`;
         const res = await fetchWithRetry(url);
         if (!res || !res.ok) throw new Error('Cannot fetch prices');
         const data = await res.json();
-        coins = data.map(c => ({
-            id: c.id,
-            symbol: (c.symbol || '').toUpperCase(),
-            name: c.name,
-            price: c.current_price,
-            change24h: c.price_change_percentage_24h || 0,
-            history: {}
-        }));
-        console.log('OK prices: ' + coins.length + ' coins');
+
+        coins = data.map(c => {
+            const sparkline = c.sparkline_in_7d?.price || [];
+            const daily = {};
+            const now = Date.now();
+            sparkline.forEach((price, i) => {
+                const hoursAgo = sparkline.length - 1 - i;
+                const date = new Date(now - hoursAgo * 60 * 60 * 1000);
+                const iso = date.toISOString().slice(0, 10);
+                if (!daily[iso]) daily[iso] = [];
+                daily[iso].push(price);
+            });
+            const history = {};
+            Object.keys(daily).sort().forEach(iso => {
+                const arr = daily[iso];
+                history[iso] = arr.reduce((a, b) => a + b, 0) / arr.length;
+            });
+
+            return {
+                id: c.id,
+                symbol: (c.symbol || '').toUpperCase(),
+                name: c.name,
+                price: c.current_price,
+                change24h: c.price_change_percentage_24h || 0,
+                history
+            };
+        });
+        console.log('OK prices + 7d fallback: ' + coins.length + ' coins');
     } catch (e) {
         console.error('FAIL prices: ' + e.message);
         return;
     }
 
-    // ==== 2. BTC — приоритетно, отдельным запросом ====
-    const btc = coins.find(c => c.symbol === 'BTC');
-    if (btc) {
-        try {
-            const url = 'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily';
-            const res = await fetchWithRetry(url);
-            if (res && res.ok) {
-                const json = await res.json();
-                (json.prices || []).forEach(([ts, price]) => {
-                    const iso = new Date(ts).toISOString().slice(0, 10);
-                    btc.history[iso] = price;
-                });
-                console.log('OK BTC: ' + Object.keys(btc.history).length + ' pts');
-            } else {
-                console.log('SKIP BTC history');
-            }
-        } catch (e) {
-            console.log('SKIP BTC history: ' + e.message);
-        }
-        await new Promise(r => setTimeout(r, 2500));
-    }
-
     for (const coin of coins) {
-        if (coin.symbol === 'BTC') continue; 
-
         try {
             const url = `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=365&interval=daily`;
             const res = await fetchWithRetry(url, 3);
+
             if (!res || !res.ok) {
-                console.log('SKIP ' + coin.symbol + ' history');
-                await new Promise(r => setTimeout(r, 3000));
+                console.log('  ' + coin.symbol + ': 365d fail → оставляю 7d (' + Object.keys(coin.history).length + ' pts)');
+                await new Promise(r => setTimeout(r, 2000));
                 continue;
             }
+
             const json = await res.json();
-            (json.prices || []).forEach(([ts, price]) => {
+            const prices = json.prices || [];
+
+            if (prices.length < 2) {
+                console.log('  ' + coin.symbol + ': пусто → оставляю 7d (' + Object.keys(coin.history).length + ' pts)');
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+            }
+
+            prices.forEach(([ts, price]) => {
                 const iso = new Date(ts).toISOString().slice(0, 10);
                 coin.history[iso] = price;
             });
             console.log('OK ' + coin.symbol + ': ' + Object.keys(coin.history).length + ' pts');
         } catch (e) {
-            console.log('SKIP ' + coin.symbol + ': ' + e.message);
+            console.log('  ' + coin.symbol + ': ошибка → оставляю 7d (' + Object.keys(coin.history).length + ' pts)');
         }
-        await new Promise(r => setTimeout(r, 2500));
+        await new Promise(r => setTimeout(r, 2200));
     }
 
     await fs.writeFile(path.join('data', 'crypto.json'), JSON.stringify({
@@ -114,5 +119,7 @@ await save('nbu',    'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchan
 await save('privat', 'https://api.privatbank.ua/p24api/pubinfo?exchange&json&coursid=11');
 await save('mono',   'https://api.monobank.ua/bank/currency');
 await saveCrypto();
+
+console.log('Done.');
 
 console.log('Done.');
