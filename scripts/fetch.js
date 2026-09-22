@@ -16,7 +16,6 @@ async function save(name, url) {
     }
 }
 
-// Запрос с retry на 429
 async function fetchWithRetry(url, retries = 3) {
     let delay = 5000;
     for (let i = 0; i < retries; i++) {
@@ -39,7 +38,6 @@ async function saveCrypto() {
         'tron', 'the-open-network', 'chainlink', 'polkadot', 'litecoin'
     ];
 
-    // ==== 1. Текущие цены (один запрос) ====
     let coins = [];
     try {
         const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${IDs.join(',')}&sparkline=false&price_change_percentage=24h`;
@@ -82,9 +80,8 @@ async function saveCrypto() {
         await new Promise(r => setTimeout(r, 2500));
     }
 
-    // ==== 3. Остальные монеты — по одной с паузой ====
     for (const coin of coins) {
-        if (coin.symbol === 'BTC') continue; // уже сделали
+        if (coin.symbol === 'BTC') continue; 
 
         try {
             const url = `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=365&interval=daily`;
