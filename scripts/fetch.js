@@ -36,7 +36,6 @@ async function saveBitcoin() {
         } catch (e) { console.error('  ' + src.url + ': ' + e.message); }
     }
 
-    // 1 год истории от CoinGecko
     let history = {};
     try {
         const res = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily', { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -53,12 +52,11 @@ async function saveBitcoin() {
         console.error('FAIL kuna: no data');
         return;
     }
-
     await fs.writeFile(path.join('data', 'kuna.json'), JSON.stringify({
         updatedAt: new Date().toISOString(),
         data: { bitcoin: { uah: ticker.price, uah_24h_change: ticker.change }, history }
     }, null, 2));
-    console.log('OK kuna (history points: ' + Object.keys(history).length + ')');
+    console.log('OK kuna (history: ' + Object.keys(history).length + ')');
 }
 
 await save('nbu',    'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
