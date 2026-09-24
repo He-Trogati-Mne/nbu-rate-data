@@ -17,7 +17,7 @@ async function readJson(name) {
 
 async function writeJson(name, data, extra = {}) {
     const payload = { updatedAt: new Date().toISOString(), ...extra, data };
-    await fs.writeFile(path.join(DATA_DIR, name + '.json'), JSON.stringify(payload, null, 2));
+    await fs.writeFile(path.join(DATA_DIR, name + '.json'), JSON.stringify(payload));
 }
 
 async function fetchJson(url, { retries = 4, baseDelay = 4000 } = {}) {
@@ -48,6 +48,10 @@ function num(v) {
     return Number.isFinite(n) ? n : null;
 }
 
+function isoToday() {
+    return new Date().toISOString().slice(0, 10);
+}
+
 /* ─────────────── Fiat ─────────────── */
 
 async function saveNBU() {
@@ -66,6 +70,64 @@ async function saveMono() {
     const data = await fetchJson('https://api.monobank.ua/bank/currency');
     await writeJson('mono', data);
     console.log(`mono    : ${data.length} rates`);
+}
+
+/* ─────────────── NBU history 2003 → now ─────────────── */
+
+const NBU_HISTORY_CURRENCIES = [
+    'USD','EUR','GBP','PLN','CNY','CHF','JPY','CAD','AUD','TRY',
+    'SEK','NOK','DKK','CZK','HUF','RON','ILS','KRW','SGD','HKD',
+    'NZD','MXN','INR','TND','EGP','DZD','AED','SAR','AZN','GEL',
+    'KZT','MYR','THB','MDL','ZAR','RSD','XDR',
+    'XAU','XAG','XPT','XPD'
+];
+
+const NBU_HISTORY_FIRST = '20030101';
+
+async function saveNBUHistory() {
+    const existing = await readJson('nbu-history');
+    const history = existing?.data || {};
+    const known = Object.keys(history).sort();
+    const lastKnown = known[known.length - 1];
+
+    const start = lastKnown
+        ? new Date(new Date(lastKnown).getTime() + 86400000).toISOString().slice(0, 10).replace(/-/g, '')
+        : NBU_HISTORY_FIRST;
+    const end = isoToday().replace(/-/g, '');
+
+    if (start > end) {
+        console.log(`nbuhist : up to date (${known.length} dates, last ${lastKnown})`);
+        return;
+    }
+
+    console.log(`nbuhist : fetching ${start} → ${end} (have ${known.length} dates)`);
+
+    let totalAdded = 0;
+
+    for (const code of NBU_HISTORY_CURRENCIES) {
+        try {
+            const url = `https://bank.gov.ua/NBU_Exchange/exchange_site?start=${start}&end=${end}&valcode=${code.toLowerCase()}&sort=exchangedate&order=asc&json`;
+            const data = await fetchJson(url, { retries: 2, baseDelay: 5000 });
+            if (!Array.isArray(data)) {
+                console.log(`  ${code.padEnd(4)}: not an array`);
+                continue;
+            }
+            data.forEach(item => {
+                const [d, m, y] = item.exchangedate.split('.');
+                const iso = `${y}-${m}-${d}`;
+                if (!history[iso]) history[iso] = {};
+                history[iso][code] = Math.round(item.rate * 10000) / 10000;
+            });
+            totalAdded += data.length;
+            console.log(`  ${code.padEnd(4)}: ${data.length} pts`);
+        } catch (e) {
+            console.log(`  ${code.padEnd(4)}: ${e.message}`);
+        }
+        await new Promise(r => setTimeout(r, 400));
+    }
+
+    await writeJson('nbu-history', history);
+    console.log(`nbuhist : saved ${Object.keys(history).length} dates (+${totalAdded} pts this run)`);
 }
 
 /* ─────────────── Kuna ─────────────── */
@@ -149,7 +211,7 @@ async function saveKuna() {
                 parsedOk: parsed != null
             });
 
-            console.log(`kuna    : ${tag} → HTTP ${res.status} (${ms}ms) ${res.headers.get('content-type') || ''}`);
+            console.log(`kuna    : ${tag} → HTTP ${res.status} (${ms}ms)`);
 
             if (!res.ok) continue;
 
@@ -186,10 +248,28 @@ async function saveKuna() {
     }
 
     console.log('kuna    : all endpoints failed, writing error snapshot');
-    await writeJson('kuna', [], {
-        error: 'all endpoints failed',
-        attempts
-    });
+    await writeJson('kuna', [], { error: 'all endpoints failed', attempts });
+}
+
+/* ─────────────── Whitebit (backup for Kuna) ─────────────── */
+
+async function saveWhitebit() {
+    const data = await fetchJson('https://whitebit.com/api/v4/public/ticker');
+    if (!data || typeof data !== 'object') throw new Error('empty response');
+
+    const pairs = Object.entries(data)
+        .filter(([pair]) => /_UAH$|_USDT$|_BTC$/.test(pair))
+        .map(([pair, t]) => ({
+            pair,
+            last: num(t.last_price),
+            buy:  num(t.bid),
+            sell: num(t.ask),
+            vol:  num(t.base_volume)
+        }))
+        .filter(p => p.last != null);
+
+    await writeJson('whitebit', pairs);
+    console.log(`whitebit: ${pairs.length} pairs`);
 }
 
 /* ─────────────── LiqPay ─────────────── */
@@ -222,7 +302,7 @@ async function saveCrypto() {
     const existingMap = {};
     (existing?.data?.coins || []).forEach(c => { existingMap[c.id] = c; });
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = isoToday();
     const historyFresh = existing?.historyDate === today;
 
     const marketsUrl =
@@ -301,11 +381,12 @@ async function saveCrypto() {
 console.log('Updating data...');
 
 const tasks = [
-    ['nbu',    saveNBU],
-    ['privat', savePrivat],
-    ['mono',   saveMono],
-    ['kuna',   saveKuna],
-    ['liqpay', saveLiqPay]
+    ['nbu',     saveNBU],
+    ['privat',  savePrivat],
+    ['mono',    saveMono],
+    ['kuna',    saveKuna],
+    ['whitebit',saveWhitebit],
+    ['liqpay',  saveLiqPay]
 ];
 
 const results = await Promise.allSettled(tasks.map(([, fn]) => fn()));
@@ -315,5 +396,8 @@ results.forEach((r, i) => {
     }
 });
 
-await saveCrypto();
+await saveNBUHistory().catch(e => console.error('FAIL nbu-history: ' + e.message));
+
+await saveCrypto().catch(e => console.error('FAIL crypto: ' + e.message));
+
 console.log('Done.');
