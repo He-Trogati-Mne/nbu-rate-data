@@ -229,6 +229,12 @@ script stays well under the monthly cap:
 CryptoCompare free tier: 100 000 requests per month, unauthenticated. The
 script uses 25 to 200 requests per day for deep history backfill.
 
+## Data integrity
+
+All data comes from official public APIs (NBU, PrivatBank, MonoBank, CoinGecko,
+CryptoCompare, Kuna, Whitebit, LiqPay). No user data is collected, no
+authentication is required. If you spot incorrect data, open an issue.
+
 ## License
 
 Released under the MIT License. See [LICENSE](LICENSE) for details.
