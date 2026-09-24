@@ -32,16 +32,17 @@ Every file shares a common envelope:
 ```json
 {
   "updatedAt": "2026-09-24T12:00:00.000Z",
-  "data": [ ... ]
+  "data": [ ]
 }
 ```
 
 Some files carry extra top-level fields, described below.
 
-```nbu.json```
+### nbu.json
 
 Array of official NBU rates, refreshed multiple times a day:
-```
+
+```json
 {
   "cc": "USD",
   "txt": "Долар США",
@@ -50,13 +51,13 @@ Array of official NBU rates, refreshed multiple times a day:
 }
 ```
 
-```nbu-history.json```
+### nbu-history.json
 
 Full daily history from 2003-01-01 to today, keyed by ISO date. Every value is
 normalised to a rate per 1 unit of currency (unlike the raw NBU API, which
 sometimes returns rates per 100 units for fiat and per 1 for metals).
 
-```
+```json
 {
   "formatVersion": 2,
   "updatedAt": "2026-09-24T...",
@@ -71,11 +72,11 @@ sometimes returns rates per 100 units for fiat and per 1 for metals).
 Currencies covered (40 total): all majors, CEE, MENA, Asia-Pacific, plus XDR
 and the four metals XAU, XAG, XPT, XPD.
 
-```privat.json```
+### privat.json
 
 Card rates from PrivatBank:
 
-```
+```json
 {
   "ccy": "USD",
   "base_ccy": "UAH",
@@ -84,11 +85,11 @@ Card rates from PrivatBank:
 }
 ```
 
-```mono.json```
+### mono.json
 
 Card rates from MonoBank:
 
-```
+```json
 {
   "currencyCodeA": 840,
   "currencyCodeB": 980,
@@ -97,14 +98,14 @@ Card rates from MonoBank:
 }
 ```
 
-```currencyCodeA``` and ```currencyCodeB``` follow ISO 4217 numeric codes
+`currencyCodeA` and `currencyCodeB` follow ISO 4217 numeric codes
 (980 = UAH, 840 = USD, 978 = EUR).
 
-```kuna.json```
+### kuna.json
 
 Normalised tickers from the Kuna exchange:
 
-```
+```json
 {
   "pair": "btcuah",
   "last": 2680000,
@@ -119,19 +120,19 @@ Normalised tickers from the Kuna exchange:
 If all endpoints fail, the file is replaced with a diagnostic snapshot listing
 HTTP status codes and body previews of each attempt:
 
-```
+```json
 {
   "error": "all endpoints failed",
-  "attempts": [ { "tag": "v3+symbols", "status": 404, "ms": 120 }, ... ],
+  "attempts": [ { "tag": "v3+symbols", "status": 404, "ms": 120 } ],
   "data": []
 }
 ```
 
-```whitebit.json```
+### whitebit.json
 
-Tickers from Whitebit, filtered to ```_UAH```, ```_USDT```, and ```_BTC``` pairs:
+Tickers from Whitebit, filtered to `_UAH`, `_USDT`, and `_BTC` pairs:
 
-```
+```json
 {
   "pair": "BTC_UAH",
   "last": 2685000,
@@ -141,17 +142,17 @@ Tickers from Whitebit, filtered to ```_UAH```, ```_USDT```, and ```_BTC``` pairs
 }
 ```
 
-```liqpay.json```
+### liqpay.json
 
 Best-effort snapshot of the LiqPay public rates widget. LiqPay does not publish
 a documented rates API, so this file is not guaranteed to update on every run.
 When the request fails, the previous snapshot is preserved.
 
-```crypto.json```
+### crypto.json
 
-Object with a ```coins``` array. Each coin carries current quote and daily history:
+Object with a `coins` array. Each coin carries current quote and daily history:
 
-```
+```json
 {
   "historyDate": "2026-09-24",
   "updatedAt": "2026-09-24T...",
@@ -180,11 +181,11 @@ TRX, TON, LINK, DOT, LTC, SHIB, DAI, WBTC, UNI, NEAR, APT, ARB, OP, SUI, XLM.
 History is merged across runs, so it can grow past the CoinGecko 365-day
 free-tier cap. Prices come from CoinGecko every 30 minutes. Deep history
 (2000-day pages from CryptoCompare) is refreshed once per calendar day,
-guarded by the top-level ```historyDate``` field.
+guarded by the top-level `historyDate` field.
 
-# Consuming from a browser
+## Consuming from a browser
 
-```
+```js
 const BASE = 'https://cdn.jsdelivr.net/gh/He-Trogati-Mne/nbu-rate-data@latest/data';
 
 const nbu = await fetch(`${BASE}/nbu.json`).then(r => r.json());
@@ -194,33 +195,40 @@ const history = await fetch(`${BASE}/nbu-history.json`).then(r => r.json());
 console.log(history.data['2003-01-03'].USD); // 5.33
 ```
 
-Append ```?t=<timestamp>``` to bypass the jsDelivr edge cache when you need the
-freshest possible copy. ```raw.githubusercontent.com``` never caches and can be
+Append `?t=<timestamp>` to bypass the jsDelivr edge cache when you need the
+freshest possible copy. `raw.githubusercontent.com` never caches and can be
 used as a fallback:
 
-# Local run
+```js
+const RAW = 'https://raw.githubusercontent.com/He-Trogati-Mne/nbu-rate-data/main/data';
+```
+
+## Local run
 
 Requires Node.js 20 or newer. No API keys, no environment variables.
 
-```node scripts/fetch.js                                                                                      ```
-
-# Automation
-```
-• .github/workflows/update.yml runs every 30 minutes. It executes
-  scripts/fetch.js, commits changed files back to main as
-  github-actions[bot], and pushes. Manual dispatch is enabled.
-  
-• .github/workflows/static.ymlpublishes the repository via GitHub Pages.
+```bash
+node scripts/fetch.js
 ```
 
-# Rate limits
+## Automation
+
+- `.github/workflows/update.yml` runs every 30 minutes. It executes
+  `scripts/fetch.js`, commits changed files back to `main` as
+  `github-actions[bot]`, and pushes. Manual dispatch is enabled.
+- `.github/workflows/static.yml` publishes the repository via GitHub Pages.
+
+## Rate limits
 
 CoinGecko Demo plan allows 30 requests per minute and 10 000 per month. The
 script stays well under the monthly cap:
 
-•  prices: 1 request per run, 48 runs per day
-
-•  deep history: 25 requests, once per calendar day
+- prices: 1 request per run, 48 runs per day
+- deep history: 25 requests, once per calendar day
 
 CryptoCompare free tier: 100 000 requests per month, unauthenticated. The
-script uses 25 to 200 requests per day for deep history backfill
+script uses 25 to 200 requests per day for deep history backfill.
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE) for details.
