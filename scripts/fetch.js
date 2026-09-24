@@ -251,7 +251,7 @@ async function saveKuna() {
     await writeJson('kuna', [], { error: 'all endpoints failed', attempts });
 }
 
-/* ─────────────── Whitebit (backup for Kuna) ─────────────── */
+/* ─────────────── Whitebit (backup) ─────────────── */
 
 async function saveWhitebit() {
     const data = await fetchJson('https://whitebit.com/api/v4/public/ticker');
@@ -297,6 +297,81 @@ const COINS = [
     'aptos', 'arbitrum', 'optimism', 'sui', 'stellar'
 ];
 
+const CC_SYMBOL = {
+    'bitcoin':          'BTC',
+    'ethereum':         'ETH',
+    'tether':           'USDT',
+    'binancecoin':      'BNB',
+    'solana':           'SOL',
+    'usd-coin':         'USDC',
+    'ripple':           'XRP',
+    'cardano':          'ADA',
+    'dogecoin':         'DOGE',
+    'avalanche-2':      'AVAX',
+    'tron':             'TRX',
+    'the-open-network': 'TON',
+    'chainlink':        'LINK',
+    'polkadot':         'DOT',
+    'litecoin':         'LTC',
+    'shiba-inu':        'SHIB',
+    'dai':              'DAI',
+    'wrapped-bitcoin':  'WBTC',
+    'uniswap':          'UNI',
+    'near':             'NEAR',
+    'aptos':            'APT',
+    'arbitrum':         'ARB',
+    'optimism':         'OP',
+    'sui':              'SUI',
+    'stellar':          'XLM'
+};
+
+async function fetchDeepHistory(ccSymbol, existingHistory = {}) {
+    const knownDates = Object.keys(existingHistory).sort();
+    const oldestKnown = knownDates[0] || null;
+
+    const result = {};
+    let toTs = Math.floor(Date.now() / 1000);
+    const stopTs = oldestKnown
+        ? Math.floor(new Date(oldestKnown).getTime() / 1000)
+        : 0;
+
+    const MAX_PAGES = 8;
+
+    for (let page = 0; page < MAX_PAGES; page++) {
+        const url = `https://min-api.cryptocompare.com/data/v2/histoday` +
+                    `?fsym=${ccSymbol}&tsym=USD&limit=2000&toTs=${toTs}`;
+        let json;
+        try {
+            json = await fetchJson(url, { retries: 3, baseDelay: 5000 });
+        } catch (e) {
+            console.log(`    cc ${ccSymbol}: page ${page} → ${e.message}`);
+            break;
+        }
+        const data = json?.Data?.Data;
+        if (!Array.isArray(data) || data.length === 0) break;
+
+        let oldest = null;
+        for (const row of data) {
+            if (row.time <= 0) continue;
+            const iso = new Date(row.time * 1000).toISOString().slice(0, 10);
+            const price = row.close;
+            if (price > 0) {
+                result[iso] = price;
+                if (!oldest || row.time < oldest.time) oldest = row;
+            }
+        }
+
+        if (!oldest) break;
+        if (stopTs && oldest.time <= stopTs) break;
+        if (data.length < 2000) break;
+
+        toTs = oldest.time - 1;
+        await new Promise(r => setTimeout(r, 400));
+    }
+
+    return result;
+}
+
 async function saveCrypto() {
     const existing = await readJson('crypto');
     const existingMap = {};
@@ -305,6 +380,7 @@ async function saveCrypto() {
     const today = isoToday();
     const historyFresh = existing?.historyDate === today;
 
+    // 1) Свежие цены + 7-дневный sparkline с CoinGecko
     const marketsUrl =
         `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd` +
         `&ids=${COINS.join(',')}&sparkline=true&price_change_percentage=24h`;
@@ -346,29 +422,28 @@ async function saveCrypto() {
 
     console.log(`crypto  : ${coins.length} coins, prices updated`);
 
+    // 2) Глубокая история с CryptoCompare — раз в сутки
     if (historyFresh) {
-        console.log('crypto  : history already refreshed today, skipping');
+        console.log('crypto  : deep history already refreshed today, skipping');
     } else {
         for (const coin of coins) {
-            try {
-                const url = `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=365`;
-                const json = await fetchJson(url, { retries: 2, baseDelay: 5000 });
-                const prices = json?.prices || [];
-
-                if (prices.length < 2) {
-                    console.log(`  ${coin.symbol.padEnd(6)}: empty, keeping ${Object.keys(coin.history).length} pts`);
-                    continue;
-                }
-
-                prices.forEach(([ts, price]) => {
-                    const iso = new Date(ts).toISOString().slice(0, 10);
-                    coin.history[iso] = price;
-                });
-                console.log(`  ${coin.symbol.padEnd(6)}: ${Object.keys(coin.history).length} pts`);
-            } catch (e) {
-                console.log(`  ${coin.symbol.padEnd(6)}: ${e.message}, keeping ${Object.keys(coin.history).length} pts`);
+            const cc = CC_SYMBOL[coin.id];
+            if (!cc) {
+                console.log(`  ${coin.symbol.padEnd(6)}: no CC mapping, keeping ${Object.keys(coin.history).length} pts`);
+                continue;
             }
-            await new Promise(r => setTimeout(r, 2500));
+            const before = Object.keys(coin.history).length;
+            try {
+                const deep = await fetchDeepHistory(cc, coin.history);
+                const deepCount = Object.keys(deep).length;
+                coin.history = { ...coin.history, ...deep };
+                const after = Object.keys(coin.history).length;
+                const first = Object.keys(coin.history).sort()[0] || '—';
+                console.log(`  ${coin.symbol.padEnd(6)}: ${before} → ${after} pts (deep ${deepCount}, first ${first})`);
+            } catch (e) {
+                console.log(`  ${coin.symbol.padEnd(6)}: ${e.message}`);
+            }
+            await new Promise(r => setTimeout(r, 600));
         }
     }
 
@@ -381,12 +456,12 @@ async function saveCrypto() {
 console.log('Updating data...');
 
 const tasks = [
-    ['nbu',     saveNBU],
-    ['privat',  savePrivat],
-    ['mono',    saveMono],
-    ['kuna',    saveKuna],
-    ['whitebit',saveWhitebit],
-    ['liqpay',  saveLiqPay]
+    ['nbu',      saveNBU],
+    ['privat',   savePrivat],
+    ['mono',     saveMono],
+    ['kuna',     saveKuna],
+    ['whitebit', saveWhitebit],
+    ['liqpay',   saveLiqPay]
 ];
 
 const results = await Promise.allSettled(tasks.map(([, fn]) => fn()));
