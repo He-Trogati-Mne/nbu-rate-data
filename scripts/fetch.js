@@ -83,10 +83,36 @@ const NBU_HISTORY_CURRENCIES = [
 ];
 
 const NBU_HISTORY_FIRST = '20030101';
+const METALS = new Set(['XAU','XAG','XPT','XPD']);
+
+// Старый endpoint bank.gov.ua/NBU_Exchange отдаёт курс за 100 единиц валюты.
+// Для драгметаллов — всегда за 1 унцию, их не трогаем.
+function normalizeNBURate(code, rate) {
+    if (rate == null) return rate;
+    if (METALS.has(code)) return Math.round(rate * 10000) / 10000;
+    if (rate > 100) return Math.round(rate / 100 * 10000) / 10000;
+    return Math.round(rate * 10000) / 10000;
+}
 
 async function saveNBUHistory() {
     const existing = await readJson('nbu-history');
     const history = existing?.data || {};
+
+    // === Миграция старых данных: делим на 100 всё, что > 100 ===
+    let migrated = 0;
+    Object.keys(history).forEach(date => {
+        const day = history[date];
+        if (!day || typeof day !== 'object') return;
+        Object.keys(day).forEach(code => {
+            const v = day[code];
+            if (typeof v === 'number' && !METALS.has(code) && v > 100) {
+                day[code] = Math.round(v / 100 * 10000) / 10000;
+                migrated++;
+            }
+        });
+    });
+    if (migrated > 0) console.log(`nbuhist : migrated ${migrated} values (÷100)`);
+
     const known = Object.keys(history).sort();
     const lastKnown = known[known.length - 1];
 
@@ -96,7 +122,12 @@ async function saveNBUHistory() {
     const end = isoToday().replace(/-/g, '');
 
     if (start > end) {
-        console.log(`nbuhist : up to date (${known.length} dates, last ${lastKnown})`);
+        if (migrated > 0) {
+            await writeJson('nbu-history', history);
+            console.log(`nbuhist : saved after migration (${known.length} dates)`);
+        } else {
+            console.log(`nbuhist : up to date (${known.length} dates, last ${lastKnown})`);
+        }
         return;
     }
 
@@ -116,7 +147,7 @@ async function saveNBUHistory() {
                 const [d, m, y] = item.exchangedate.split('.');
                 const iso = `${y}-${m}-${d}`;
                 if (!history[iso]) history[iso] = {};
-                history[iso][code] = Math.round(item.rate * 10000) / 10000;
+                history[iso][code] = normalizeNBURate(code, item.rate);
             });
             totalAdded += data.length;
             console.log(`  ${code.padEnd(4)}: ${data.length} pts`);
@@ -380,7 +411,6 @@ async function saveCrypto() {
     const today = isoToday();
     const historyFresh = existing?.historyDate === today;
 
-    // 1) Свежие цены + 7-дневный sparkline с CoinGecko
     const marketsUrl =
         `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd` +
         `&ids=${COINS.join(',')}&sparkline=true&price_change_percentage=24h`;
@@ -422,7 +452,6 @@ async function saveCrypto() {
 
     console.log(`crypto  : ${coins.length} coins, prices updated`);
 
-    // 2) Глубокая история с CryptoCompare — раз в сутки
     if (historyFresh) {
         console.log('crypto  : deep history already refreshed today, skipping');
     } else {
@@ -472,7 +501,6 @@ results.forEach((r, i) => {
 });
 
 await saveNBUHistory().catch(e => console.error('FAIL nbu-history: ' + e.message));
-
 await saveCrypto().catch(e => console.error('FAIL crypto: ' + e.message));
 
 console.log('Done.');
