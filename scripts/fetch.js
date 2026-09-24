@@ -87,70 +87,106 @@ const METALS = new Set(['XAU','XAG','XPT','XPD']);
 
 // Старый endpoint bank.gov.ua/NBU_Exchange отдаёт курс за 100 единиц валюты.
 // Для драгметаллов — всегда за 1 унцию, их не трогаем.
+// Курс за 1 единицу обычной валюты не может быть > 100, поэтому всё что больше — делим на 100.
 function normalizeNBURate(code, rate) {
-    if (rate == null) return rate;
+    if (rate == null) return null;
     if (METALS.has(code)) return Math.round(rate * 10000) / 10000;
     if (rate > 100) return Math.round(rate / 100 * 10000) / 10000;
     return Math.round(rate * 10000) / 10000;
 }
 
-async function saveNBUHistory() {
-    const existing = await readJson('nbu-history');
-    const history = existing?.data || {};
-
-    // === Миграция старых данных: делим на 100 всё, что > 100 ===
-    let migrated = 0;
-    Object.keys(history).forEach(date => {
+// Проверяем, битые ли данные: если хоть одна обычная валюта на любую дату > 100 — пересобираем.
+function isHistoryBroken(history) {
+    const check = ['USD', 'EUR', 'GBP', 'PLN', 'CNY'];
+    for (const date of Object.keys(history)) {
         const day = history[date];
-        if (!day || typeof day !== 'object') return;
-        Object.keys(day).forEach(code => {
+        if (!day || typeof day !== 'object') continue;
+        for (const code of check) {
             const v = day[code];
-            if (typeof v === 'number' && !METALS.has(code) && v > 100) {
-                day[code] = Math.round(v / 100 * 10000) / 10000;
-                migrated++;
-            }
-        });
-    });
-    if (migrated > 0) console.log(`nbuhist : migrated ${migrated} values (÷100)`);
-
-    const known = Object.keys(history).sort();
-    const lastKnown = known[known.length - 1];
-
-    const start = lastKnown
-        ? new Date(new Date(lastKnown).getTime() + 86400000).toISOString().slice(0, 10).replace(/-/g, '')
-        : NBU_HISTORY_FIRST;
-    const end = isoToday().replace(/-/g, '');
-
-    if (start > end) {
-        if (migrated > 0) {
-            await writeJson('nbu-history', history);
-            console.log(`nbuhist : saved after migration (${known.length} dates)`);
-        } else {
-            console.log(`nbuhist : up to date (${known.length} dates, last ${lastKnown})`);
+            if (typeof v === 'number' && v > 100) return true;
         }
-        return;
     }
+    return false;
+}
 
-    console.log(`nbuhist : fetching ${start} → ${end} (have ${known.length} dates)`);
-
-    let totalAdded = 0;
+// Полный сбор истории: 2003 → сегодня, все валюты, с нормализацией.
+async function rebuildHistory() {
+    console.log(`nbuhist : FULL REBUILD ${NBU_HISTORY_FIRST} → today`);
+    const history = {};
+    const end = isoToday().replace(/-/g, '');
+    let totalPts = 0;
 
     for (const code of NBU_HISTORY_CURRENCIES) {
+        const url = `https://bank.gov.ua/NBU_Exchange/exchange_site?start=${NBU_HISTORY_FIRST}&end=${end}&valcode=${code.toLowerCase()}&sort=exchangedate&order=asc&json`;
         try {
-            const url = `https://bank.gov.ua/NBU_Exchange/exchange_site?start=${start}&end=${end}&valcode=${code.toLowerCase()}&sort=exchangedate&order=asc&json`;
-            const data = await fetchJson(url, { retries: 2, baseDelay: 5000 });
+            const data = await fetchJson(url, { retries: 3, baseDelay: 5000 });
             if (!Array.isArray(data)) {
                 console.log(`  ${code.padEnd(4)}: not an array`);
                 continue;
             }
-            data.forEach(item => {
+            let count = 0;
+            for (const item of data) {
                 const [d, m, y] = item.exchangedate.split('.');
                 const iso = `${y}-${m}-${d}`;
                 if (!history[iso]) history[iso] = {};
-                history[iso][code] = normalizeNBURate(code, item.rate);
-            });
-            totalAdded += data.length;
-            console.log(`  ${code.padEnd(4)}: ${data.length} pts`);
+                const normalized = normalizeNBURate(code, item.rate);
+                if (normalized != null) {
+                    history[iso][code] = normalized;
+                    count++;
+                }
+            }
+            totalPts += count;
+            console.log(`  ${code.padEnd(4)}: ${count} pts`);
+        } catch (e) {
+            console.log(`  ${code.padEnd(4)}: FAIL ${e.message}`);
+        }
+        await new Promise(r => setTimeout(r, 500));
+    }
+
+    const dates = Object.keys(history).sort();
+    const first = dates[0];
+    const last = dates[dates.length - 1];
+    console.log(`nbuhist : rebuilt ${dates.length} dates (${first} → ${last}), ${totalPts} pts`);
+    console.log(`nbuhist : USD ${first} = ${history[first]?.USD}, USD ${last} = ${history[last]?.USD}`);
+    await writeJson('nbu-history', history);
+    return history;
+}
+
+// Инкрементальный догон: только новые дни с последней сохранённой даты.
+async function appendHistory(history) {
+    const known = Object.keys(history).sort();
+    const lastKnown = known[known.length - 1];
+
+    const start = new Date(new Date(lastKnown).getTime() + 86400000)
+        .toISOString().slice(0, 10).replace(/-/g, '');
+    const end = isoToday().replace(/-/g, '');
+
+    if (start > end) {
+        console.log(`nbuhist : up to date (${known.length} dates, last ${lastKnown})`);
+        return false;
+    }
+
+    console.log(`nbuhist : appending ${start} → ${end} (have ${known.length} dates)`);
+    let totalAdded = 0;
+
+    for (const code of NBU_HISTORY_CURRENCIES) {
+        const url = `https://bank.gov.ua/NBU_Exchange/exchange_site?start=${start}&end=${end}&valcode=${code.toLowerCase()}&sort=exchangedate&order=asc&json`;
+        try {
+            const data = await fetchJson(url, { retries: 2, baseDelay: 5000 });
+            if (!Array.isArray(data)) continue;
+            let count = 0;
+            for (const item of data) {
+                const [d, m, y] = item.exchangedate.split('.');
+                const iso = `${y}-${m}-${d}`;
+                if (!history[iso]) history[iso] = {};
+                const normalized = normalizeNBURate(code, item.rate);
+                if (normalized != null) {
+                    history[iso][code] = normalized;
+                    count++;
+                }
+            }
+            totalAdded += count;
+            console.log(`  ${code.padEnd(4)}: +${count}`);
         } catch (e) {
             console.log(`  ${code.padEnd(4)}: ${e.message}`);
         }
@@ -158,7 +194,29 @@ async function saveNBUHistory() {
     }
 
     await writeJson('nbu-history', history);
-    console.log(`nbuhist : saved ${Object.keys(history).length} dates (+${totalAdded} pts this run)`);
+    console.log(`nbuhist : saved ${Object.keys(history).length} dates (+${totalAdded} this run)`);
+    return true;
+}
+
+async function saveNBUHistory() {
+    const existing = await readJson('nbu-history');
+    let history = existing?.data || {};
+
+    // Если данных нет — полный rebuild.
+    if (Object.keys(history).length === 0) {
+        await rebuildHistory();
+        return;
+    }
+
+    // Если данные битые (старый формат ×100) — полный rebuild с нуля.
+    if (isHistoryBroken(history)) {
+        console.log('nbuhist : detected legacy ×100 format → full rebuild');
+        await rebuildHistory();
+        return;
+    }
+
+    // Иначе — инкрементальный догон.
+    await appendHistory(history);
 }
 
 /* ─────────────── Kuna ─────────────── */
