@@ -43,6 +43,11 @@ async function fetchJson(url, { retries = 4, baseDelay = 4000 } = {}) {
     return null;
 }
 
+function num(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
+
 /* ─────────────── Fiat ─────────────── */
 
 async function saveNBU() {
@@ -72,6 +77,50 @@ const KUNA_SYMBOLS = [
     'btcusdt', 'ethusdt', 'ethbtc', 'solusdt'
 ];
 
+function normalizeKuna(raw) {
+    const out = [];
+
+    if (Array.isArray(raw)) {
+        for (const row of raw) {
+            if (Array.isArray(row) && row.length >= 2) {
+                const [pair, last, low, high, vol, buy, sell] = row;
+                out.push({
+                    pair: String(pair),
+                    last: num(last), low: num(low), high: num(high),
+                    vol:  num(vol),  buy: num(buy), sell: num(sell)
+                });
+            } else if (row && typeof row === 'object') {
+                const pair = row.symbol || row.pair || row.name;
+                if (!pair) continue;
+                out.push({
+                    pair: String(pair),
+                    last: num(row.last ?? row.price ?? row.lastPrice ?? row.close),
+                    low:  num(row.low),
+                    high: num(row.high),
+                    vol:  num(row.vol ?? row.volume),
+                    buy:  num(row.buy ?? row.bid),
+                    sell: num(row.sell ?? row.ask)
+                });
+            }
+        }
+    } else if (raw && typeof raw === 'object') {
+        for (const [pair, t] of Object.entries(raw)) {
+            if (!t || typeof t !== 'object') continue;
+            out.push({
+                pair,
+                last: num(t.last ?? t.price ?? t.last_price ?? t.close),
+                low:  num(t.low ?? t.low_price),
+                high: num(t.high ?? t.high_price),
+                vol:  num(t.vol ?? t.volume ?? t.base_volume),
+                buy:  num(t.buy ?? t.bid ?? t.bid_price),
+                sell: num(t.sell ?? t.ask ?? t.ask_price)
+            });
+        }
+    }
+
+    return out.filter(p => p.last != null || p.buy != null || p.sell != null);
+}
+
 async function saveKuna() {
     const endpoints = [
         { url: `https://api.kuna.io/v3/tickers?symbols=${KUNA_SYMBOLS.join(',')}`, tag: 'v3+symbols' },
@@ -79,117 +128,68 @@ async function saveKuna() {
         { url: 'https://api.kuna.io/v2/tickers', tag: 'v2-legacy' }
     ];
 
-    let raw = null;
-    let usedTag = null;
-    const errors = [];
+    const attempts = [];
 
     for (const { url, tag } of endpoints) {
+        const started = Date.now();
         try {
-            const data = await fetchJson(url, { retries: 1, baseDelay: 2000 });
-            if (data == null) { errors.push(`${tag}: null`); continue; }
+            const res = await fetch(url, { headers: UA });
+            const ms = Date.now() - started;
+            const text = await res.text();
 
-            if (data && !Array.isArray(data) && typeof data === 'object') {
-                const keys = Object.keys(data);
-                const isError = keys.length <= 2 && (data.messages || data.message || data.error);
-                if (isError) { errors.push(`${tag}: ${data.messages || data.message || data.error}`); continue; }
+            let parsed = null;
+            try { parsed = JSON.parse(text); } catch {}
+
+            attempts.push({
+                tag,
+                status: res.status,
+                ms,
+                contentType: res.headers.get('content-type') || '',
+                bodyPreview: text.slice(0, 300),
+                parsedOk: parsed != null
+            });
+
+            console.log(`kuna    : ${tag} → HTTP ${res.status} (${ms}ms) ${res.headers.get('content-type') || ''}`);
+
+            if (!res.ok) continue;
+
+            if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
+                const keys = Object.keys(parsed);
+                const isError = keys.length <= 3 && (parsed.messages || parsed.message || parsed.error);
+                if (isError) {
+                    console.log(`kuna    : ${tag} → API error: ${parsed.messages || parsed.message || parsed.error}`);
+                    continue;
+                }
             }
 
-            const empty = Array.isArray(data) && data.length === 0;
-            if (empty) { errors.push(`${tag}: empty array`); continue; }
+            if (Array.isArray(parsed) && parsed.length === 0) {
+                console.log(`kuna    : ${tag} → empty array`);
+                continue;
+            }
 
-            raw = data;
-            usedTag = tag;
-            break;
+            const normalized = normalizeKuna(parsed);
+            if (normalized.length === 0) {
+                console.log(`kuna    : ${tag} → got data but normalization produced 0 pairs`);
+                console.log(`kuna    : sample: ${JSON.stringify(parsed).slice(0, 220)}`);
+                await writeJson('kuna', parsed, { endpoint: tag, note: 'unnormalized', attempts });
+                return;
+            }
+
+            await writeJson('kuna', normalized, { endpoint: tag });
+            console.log(`kuna    : saved ${normalized.length} pairs via ${tag}`);
+            return;
         } catch (e) {
-            errors.push(`${tag}: ${e.message}`);
+            const ms = Date.now() - started;
+            attempts.push({ tag, error: e.message, ms });
+            console.log(`kuna    : ${tag} → ${e.message} (${ms}ms)`);
         }
     }
 
-    if (raw == null) {
-        console.log(`kuna    : all endpoints failed → ${errors.join(' | ')}`);
-        const prev = await readJson('kuna');
-        if (prev) console.log(`kuna    : keeping previous snapshot (${(prev.data || []).length} pairs)`);
-        else console.log('kuna    : no previous snapshot to keep');
-        return;
-    }
-
-    const shape = Array.isArray(raw)
-        ? `array[${raw.length}]`
-        : `object{${Object.keys(raw).length} keys}`;
-    const sample = Array.isArray(raw) ? raw[0] : raw[Object.keys(raw)[0]];
-    console.log(`kuna    : ${usedTag} → ${shape}`);
-    console.log(`kuna    : sample: ${JSON.stringify(sample).slice(0, 220)}`);
-
-    let normalized = [];
-
-    if (Array.isArray(raw)) {
-
-        normalized = raw
-            .map(row => {
-                if (Array.isArray(row) && row.length >= 2) {
-                    const [pair, last, low, high, vol, buy, sell] = row;
-                    return {
-                        pair: String(pair),
-                        last: Number(last) || null,
-                        low:  Number(low)  || null,
-                        high: Number(high) || null,
-                        vol:  Number(vol)  || null,
-                        buy:  Number(buy)  || null,
-                        sell: Number(sell) || null
-                    };
-                }
-                if (row && typeof row === 'object') {
-                    const pair = row.symbol || row.pair || row.name;
-                    const last = row.last ?? row.price ?? row.lastPrice ?? row.close;
-                    const buy  = row.buy  ?? row.bid;
-                    const sell = row.sell ?? row.ask;
-                    const low  = row.low;
-                    const high = row.high;
-                    const vol  = row.vol ?? row.volume;
-                    if (!pair) return null;
-                    return {
-                        pair: String(pair),
-                        last: Number(last) || null,
-                        low:  Number(low)  || null,
-                        high: Number(high) || null,
-                        vol:  Number(vol)  || null,
-                        buy:  Number(buy)  || null,
-                        sell: Number(sell) || null
-                    };
-                }
-                return null;
-            })
-            .filter(Boolean);
-    } else if (typeof raw === 'object') {
-        normalized = Object.entries(raw).map(([pair, t]) => {
-            const last = t.last ?? t.price ?? t.last_price ?? t.close ?? null;
-            const buy  = t.buy  ?? t.bid  ?? t.bid_price ?? null;
-            const sell = t.sell ?? t.ask  ?? t.ask_price ?? null;
-            const low  = t.low  ?? t.low_price ?? null;
-            const high = t.high ?? t.high_price ?? null;
-            const vol  = t.vol  ?? t.volume ?? t.base_volume ?? null;
-            return {
-                pair,
-                last: Number(last) || null,
-                low:  Number(low)  || null,
-                high: Number(high) || null,
-                vol:  Number(vol)  || null,
-                buy:  Number(buy)  || null,
-                sell: Number(sell) || null
-            };
-        });
-    }
-
-    normalized = normalized.filter(p => p.last != null || p.buy != null || p.sell != null);
-
-    if (normalized.length === 0) {
-        console.log('kuna    : could not normalize any pair, saving raw for debug');
-        await writeJson('kuna', raw, { note: 'unnormalized', endpoint: usedTag });
-        return;
-    }
-
-    await writeJson('kuna', normalized, { endpoint: usedTag });
-    console.log(`kuna    : saved ${normalized.length} pairs via ${usedTag}`);
+    console.log('kuna    : all endpoints failed, writing error snapshot');
+    await writeJson('kuna', [], {
+        error: 'all endpoints failed',
+        attempts
+    });
 }
 
 /* ─────────────── LiqPay ─────────────── */
