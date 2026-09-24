@@ -20,7 +20,7 @@ async function writeJson(name, data, extra = {}) {
     await fs.writeFile(path.join(DATA_DIR, name + '.json'), JSON.stringify(payload, null, 2));
 }
 
-async function fetchJson(url, { retries = 4, baseDelay = 4000 } = {}) {
+async function fetchJson(url, { retries = 4, baseDelay = 4000, method = 'json' } = {}) {
     let delay = baseDelay;
     for (let i = 0; i <= retries; i++) {
         try {
@@ -33,7 +33,7 @@ async function fetchJson(url, { retries = 4, baseDelay = 4000 } = {}) {
                 continue;
             }
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            return await res.json();
+            return method === 'text' ? await res.text() : await res.json();
         } catch (e) {
             if (i === retries) throw e;
             await new Promise(r => setTimeout(r, delay));
@@ -63,14 +63,53 @@ async function saveMono() {
     console.log(`mono    : ${data.length} rates`);
 }
 
+/* ─────────────── Kuna ─────────────── */
+
+async function saveKuna() {
+    const data = await fetchJson('https://api.kuna.io/v3/tickers');
+    if (!Array.isArray(data)) throw new Error('unexpected response');
+
+    const normalized = data
+        .filter(row => Array.isArray(row) && row.length >= 7)
+        .map(([pair, last, low, high, vol, buy, sell]) => ({
+            pair,
+            last: Number(last),
+            low:  Number(low),
+            high: Number(high),
+            vol:  Number(vol),
+            buy:  Number(buy),
+            sell: Number(sell)
+        }));
+
+    await writeJson('kuna', normalized);
+    console.log(`kuna    : ${normalized.length} pairs`);
+}
+
+/* ─────────────── LiqPay ─────────────── */
+
+async function saveLiqPay() {
+    try {
+        const data = await fetchJson('https://www.liqpay.ua/api/en/checkout/currency', { retries: 2, baseDelay: 3000 });
+        if (!data || typeof data !== 'object') throw new Error('empty response');
+        await writeJson('liqpay', data);
+        console.log(`liqpay  : ok`);
+    } catch (e) {
+        // Fallback: keep the previous file so nothing breaks
+        const prev = await readJson('liqpay');
+        if (prev) {
+            console.log(`liqpay  : ${e.message}, keeping previous snapshot`);
+        } else {
+            console.log(`liqpay  : ${e.message}, no previous snapshot`);
+        }
+    }
+}
+
 /* ─────────────── Crypto ─────────────── */
 
 const COINS = [
-    // top 15
     'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
     'usd-coin', 'ripple', 'cardano', 'dogecoin', 'avalanche-2',
     'tron', 'the-open-network', 'chainlink', 'polkadot', 'litecoin',
-    // tier 2
     'shiba-inu', 'dai', 'wrapped-bitcoin', 'uniswap', 'near',
     'aptos', 'arbitrum', 'optimism', 'sui', 'stellar'
 ];
@@ -109,7 +148,6 @@ async function saveCrypto() {
             history[iso] = arr.reduce((a, b) => a + b, 0) / arr.length;
         });
 
-        // merge with previously stored history so it grows past the 365-day cap
         const prev = existingMap[m.id]?.history || {};
         const merged = { ...prev, ...history };
 
@@ -125,7 +163,6 @@ async function saveCrypto() {
 
     console.log(`crypto  : ${coins.length} coins, prices updated`);
 
-    // 2) Deep history (365 days) — once per calendar day
     if (historyFresh) {
         console.log('crypto  : history already refreshed today, skipping');
     } else {
@@ -156,13 +193,24 @@ async function saveCrypto() {
     console.log(`crypto  : saved ${coins.length} coins`);
 }
 
+/* ─────────────── Run ─────────────── */
+
 console.log('Updating data...');
-const fiatResults = await Promise.allSettled([saveNBU(), savePrivat(), saveMono()]);
-fiatResults.forEach((r, i) => {
+
+const fiat = await Promise.allSettled([
+    saveNBU(),
+    savePrivat(),
+    saveMono(),
+    saveKuna(),
+    saveLiqPay()
+]);
+
+const names = ['nbu', 'privat', 'mono', 'kuna', 'liqpay'];
+fiat.forEach((r, i) => {
     if (r.status === 'rejected') {
-        const names = ['nbu', 'privat', 'mono'];
         console.error(`FAIL ${names[i]}: ${r.reason?.message}`);
     }
 });
+
 await saveCrypto();
 console.log('Done.');
