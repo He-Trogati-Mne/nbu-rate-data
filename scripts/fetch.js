@@ -83,33 +83,17 @@ const NBU_HISTORY_CURRENCIES = [
 ];
 
 const NBU_HISTORY_FIRST = '20030101';
-const METALS = new Set(['XAU','XAG','XPT','XPD']);
+const HISTORY_FORMAT_VERSION = 2;
 
-// Старый endpoint bank.gov.ua/NBU_Exchange отдаёт курс за 100 единиц валюты.
-// Для драгметаллов — всегда за 1 унцию, их не трогаем.
-// Курс за 1 единицу обычной валюты не может быть > 100, поэтому всё что больше — делим на 100.
-function normalizeNBURate(code, rate) {
+// API НБУ возвращает rate вместе с полем units — количество единиц валюты,
+// за которое указана цена. Для валют units обычно 100, для металлов 1.
+// Универсально: цена за 1 единицу = rate / units.
+function normalizeNBURate(code, rate, units) {
     if (rate == null) return null;
-    if (METALS.has(code)) return Math.round(rate * 10000) / 10000;
-    if (rate > 100) return Math.round(rate / 100 * 10000) / 10000;
-    return Math.round(rate * 10000) / 10000;
+    const u = (Number.isFinite(Number(units)) && Number(units) > 0) ? Number(units) : 1;
+    return Math.round((rate / u) * 10000) / 10000;
 }
 
-// Проверяем, битые ли данные: если хоть одна обычная валюта на любую дату > 100 — пересобираем.
-function isHistoryBroken(history) {
-    const check = ['USD', 'EUR', 'GBP', 'PLN', 'CNY'];
-    for (const date of Object.keys(history)) {
-        const day = history[date];
-        if (!day || typeof day !== 'object') continue;
-        for (const code of check) {
-            const v = day[code];
-            if (typeof v === 'number' && v > 100) return true;
-        }
-    }
-    return false;
-}
-
-// Полный сбор истории: 2003 → сегодня, все валюты, с нормализацией.
 async function rebuildHistory() {
     console.log(`nbuhist : FULL REBUILD ${NBU_HISTORY_FIRST} → today`);
     const history = {};
@@ -129,14 +113,14 @@ async function rebuildHistory() {
                 const [d, m, y] = item.exchangedate.split('.');
                 const iso = `${y}-${m}-${d}`;
                 if (!history[iso]) history[iso] = {};
-                const normalized = normalizeNBURate(code, item.rate);
-                if (normalized != null) {
-                    history[iso][code] = normalized;
+                const v = normalizeNBURate(code, item.rate, item.units);
+                if (v != null) {
+                    history[iso][code] = v;
                     count++;
                 }
             }
             totalPts += count;
-            console.log(`  ${code.padEnd(4)}: ${count} pts`);
+            console.log(`  ${code.padEnd(4)}: ${count} pts (sample: ${data[0]?.rate} / units ${data[0]?.units} → ${normalizeNBURate(code, data[0]?.rate, data[0]?.units)})`);
         } catch (e) {
             console.log(`  ${code.padEnd(4)}: FAIL ${e.message}`);
         }
@@ -148,11 +132,13 @@ async function rebuildHistory() {
     const last = dates[dates.length - 1];
     console.log(`nbuhist : rebuilt ${dates.length} dates (${first} → ${last}), ${totalPts} pts`);
     console.log(`nbuhist : USD ${first} = ${history[first]?.USD}, USD ${last} = ${history[last]?.USD}`);
-    await writeJson('nbu-history', history);
+    console.log(`nbuhist : XAU ${first} = ${history[first]?.XAU}, XAU ${last} = ${history[last]?.XAU}`);
+    console.log(`nbuhist : XPD ${first} = ${history[first]?.XPD}, XPD ${last} = ${history[last]?.XPD}`);
+
+    await writeJson('nbu-history', history, { formatVersion: HISTORY_FORMAT_VERSION });
     return history;
 }
 
-// Инкрементальный догон: только новые дни с последней сохранённой даты.
 async function appendHistory(history) {
     const known = Object.keys(history).sort();
     const lastKnown = known[known.length - 1];
@@ -163,7 +149,7 @@ async function appendHistory(history) {
 
     if (start > end) {
         console.log(`nbuhist : up to date (${known.length} dates, last ${lastKnown})`);
-        return false;
+        return;
     }
 
     console.log(`nbuhist : appending ${start} → ${end} (have ${known.length} dates)`);
@@ -179,9 +165,9 @@ async function appendHistory(history) {
                 const [d, m, y] = item.exchangedate.split('.');
                 const iso = `${y}-${m}-${d}`;
                 if (!history[iso]) history[iso] = {};
-                const normalized = normalizeNBURate(code, item.rate);
-                if (normalized != null) {
-                    history[iso][code] = normalized;
+                const v = normalizeNBURate(code, item.rate, item.units);
+                if (v != null) {
+                    history[iso][code] = v;
                     count++;
                 }
             }
@@ -193,29 +179,28 @@ async function appendHistory(history) {
         await new Promise(r => setTimeout(r, 400));
     }
 
-    await writeJson('nbu-history', history);
+    await writeJson('nbu-history', history, { formatVersion: HISTORY_FORMAT_VERSION });
     console.log(`nbuhist : saved ${Object.keys(history).length} dates (+${totalAdded} this run)`);
-    return true;
 }
 
 async function saveNBUHistory() {
     const existing = await readJson('nbu-history');
-    let history = existing?.data || {};
+    const formatVersion = existing?.formatVersion || 1;
+    const history = existing?.data || {};
 
-    // Если данных нет — полный rebuild.
+    // Формат v1 (или отсутствует) — битые металлы и, возможно, валюты. Пересобираем.
+    if (formatVersion < HISTORY_FORMAT_VERSION) {
+        console.log(`nbuhist : format v${formatVersion} < v${HISTORY_FORMAT_VERSION} → full rebuild`);
+        await rebuildHistory();
+        return;
+    }
+
     if (Object.keys(history).length === 0) {
+        console.log('nbuhist : empty history → full rebuild');
         await rebuildHistory();
         return;
     }
 
-    // Если данные битые (старый формат ×100) — полный rebuild с нуля.
-    if (isHistoryBroken(history)) {
-        console.log('nbuhist : detected legacy ×100 format → full rebuild');
-        await rebuildHistory();
-        return;
-    }
-
-    // Иначе — инкрементальный догон.
     await appendHistory(history);
 }
 
