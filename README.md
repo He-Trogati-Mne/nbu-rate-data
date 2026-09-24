@@ -202,7 +202,7 @@ used as a fallback:
 
 Requires Node.js 20 or newer. No API keys, no environment variables.
 
-```node scripts/fetch.js                                                                                                    ```
+```node scripts/fetch.js                                                                                           ```
 
 # Automation
 ```
