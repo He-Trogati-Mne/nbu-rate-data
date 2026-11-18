@@ -1,1 +1,1 @@
-{"updatedAt":"2026-11-17T19:29:10.131Z","error":"all endpoints failed","attempts":[{"tag":"v3+symbols","error":"fetch failed","ms":54},{"tag":"v3-full","error":"fetch failed","ms":4},{"tag":"v2-legacy","error":"fetch failed","ms":6}],"data":[]}
+{"updatedAt":"2026-11-18T01:46:59.848Z","error":"all endpoints failed","attempts":[{"tag":"v3+symbols","error":"fetch failed","ms":179},{"tag":"v3-full","error":"fetch failed","ms":58},{"tag":"v2-legacy","error":"fetch failed","ms":27}],"data":[]}
