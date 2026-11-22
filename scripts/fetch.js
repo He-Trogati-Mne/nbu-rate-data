@@ -89,13 +89,14 @@ async function saveMono() {
     console.log(`mono    : ${data.length} rates`);
 }
 
-/* ─────────────── Official Bank Websites (no aggregators) ─────────────── */
+/* ─────────────── Official Bank Websites (with proxy + Chromium bypass) ─────────────── */
 
 const BANK_CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN'];
+const WORKER_PROXY = 'https://nbu-rate.nightmod.workers.dev/?url=';
 
 const OFFICIAL_BANK_SOURCES = [
     { id: 'oschad',          urls: ['https://www.oschadbank.ua/currency-rate'] },
-    { id: 'pumb',            urls: ['https://www.pumb.ua/info/currency_exchange', 'https://www.pumb.ua/en', 'https://www.pumb.ua/'] },
+    { id: 'pumb',            urls: ['https://www.pumb.ua/info/commercial-rate', 'https://www.pumb.ua/info/currency_exchange', 'https://www.pumb.ua/'] },
     { id: 'raif',            urls: ['https://raiffeisen.ua/currency'] },
     { id: 'ukrsib',          urls: ['https://ukrsibbank.com/currency-cash/'] },
     { id: 'sense',           urls: ['https://sensebank.com.ua/currency-exchange'] },
@@ -103,13 +104,45 @@ const OFFICIAL_BANK_SOURCES = [
     { id: 'ukrexim',         urls: ['https://www.eximb.com/ua/business/pryvatnym-klientam/pryvatnym-klientam-inshi-poslugy/obmin-valyut/kursy-valyut/', 'https://www.eximb.com/ua/'] },
     { id: 'pivdenny',        urls: ['https://bank.com.ua/'] },
     { id: 'credit-agricole', urls: ['https://credit-agricole.ua/kurs-valyut', 'https://credit-agricole.ua/'] },
-    { id: 'globus',          urls: ['https://globusbank.com.ua/ua/kurs-valyut.html', 'https://globusbank.com.ua/', 'https://globusplus.ua/'] },
+    { id: 'globus',          urls: ['https://globusbank.com.ua/ua/kurs-valyut.html', 'https://globusbank.com.ua/'] },
     { id: 'lviv',            urls: ['https://www.banklviv.com/'] },
     { id: 'a-bank',          urls: ['https://a-bank.com.ua/'] },
     { id: 'kredo',           urls: ['https://kredobank.com.ua/info/kursy-valyut/cards', 'https://kredobank.com.ua/info/kursy-valyut'] },
     { id: 'otp',             urls: ['https://www.otpbank.com.ua/privateclients/pay-cards/currency-converter-cards.php', 'https://www.otpbank.com.ua/'] },
     { id: 'pravex',          urls: ['https://www.pravex.com.ua/kursy-valyut', 'https://www.pravex.com.ua/'] },
-    { id: 'tas',             urls: ['https://tascombank.ua/'] }
+    { id: 'tas',             urls: ['https://tascombank.ua/'] },
+    { id: 'piraeus',         urls: ['https://www.piraeusbank.ua/', 'https://www.piraeusbank.ua/ua/kursy-valyut-dlya-operatsiy-iz-platizhnymy-kartkamy'] },
+    { id: 'idea',            urls: ['https://ideabank.ua/', 'https://ideabank.ua/uk/currency-rates'] },
+    { id: 'komin',           urls: ['https://cib.com.ua/', 'https://cib.com.ua/currency-converter'] },
+    { id: 'alliance',        urls: ['https://bankalliance.ua/'] },
+    { id: 'poltava',         urls: ['https://poltavabank.com/'] },
+    { id: 'polikom',         urls: ['https://www.policombank.com/'] },
+    { id: 'ukrcapital',      urls: ['https://www.ukrcapital.com.ua/'] },
+    { id: 'krystal',         urls: ['https://crystalbank.com.ua/', 'https://crystalbank.com.ua/currency'] },
+    { id: 'bank34',          urls: ['https://bank34.ua/'] },
+    { id: 'grant',           urls: ['https://www.grant.ua/'] },
+    { id: 'industrial',      urls: ['https://industrialbank.ua/'] },
+    { id: 'asvio',           urls: ['https://www.asviobank.ua/'] },
+    { id: 'vostok',          urls: ['https://bankvostok.com.ua/'] },
+    { id: 'mtb',             urls: ['https://mtb.ua/'] },
+    { id: 'accord',          urls: ['https://accordbank.com.ua/'] },
+    { id: 'radabank',        urls: ['https://www.radabank.com.ua/'] },
+    { id: 'credit-dnipro',   urls: ['https://creditdnepr.com.ua/'] },
+    { id: 'procredit',       urls: ['https://www.procreditbank.com.ua/'] },
+    { id: 'unex',            urls: ['https://unexbank.ua/'] },
+    { id: 'altbank',         urls: ['https://altbank.ua/'] },
+    { id: 'universal',       urls: ['https://www.universalbank.com.ua/'] },
+    { id: 'mib',             urls: ['https://www.ii-bank.com.ua/'] },
+    { id: 'agroprosperis',   urls: ['https://ap-bank.com/'] },
+    { id: 'avangard',        urls: ['https://avgd.ua/'] },
+    { id: 'bizbank',         urls: ['https://www.bisbank.com.ua/'] },
+    { id: 'metabank',        urls: ['https://www.mbank.com.ua/'] },
+    { id: 'oksi',            urls: ['https://www.oxibank.ua/'] },
+    { id: 'family',          urls: ['https://www.fbank.com.ua/'] },
+    { id: 'trust-capital',   urls: ['https://www.tc-bank.com/'] },
+    { id: 'clearing',        urls: ['https://www.clhs.com.ua/'] },
+    { id: 'pinbank',         urls: ['https://www.pinbank.ua/'] },
+    { id: 'sky',             urls: ['https://sky.bank/'] }
 ];
 
 function stripHtmlTags(html) {
@@ -137,62 +170,87 @@ async function getNbuAnchors() {
 
 function normalizeRateValue(val, ref) {
     if (!Number.isFinite(val) || !ref) return null;
-    // Некоторые банки (например, Укргазбанк) указывают курс за 100 единиц: 4490.00 -> 44.90
     if (val >= ref * 75 && val <= ref * 140) val = val / 100;
-    if (val >= ref * 0.75 && val <= ref * 1.4) {
+    if (val >= ref * 0.80 && val <= ref * 1.32) {
         return Math.round(val * 10000) / 10000;
     }
     return null;
 }
 
-function extractCurrencyFromFragment(fragment, cc, ref) {
-    const rawNums = fragment.match(/\b\d{1,5}[.,]\d{2,4}\b/g) || [];
+function extractCurrencyFromFragment(fragment, ref) {
+    // Убираем числа с пробелами-разделителями тысяч вроде "50 000" и даты вида 22.11.2026
+    const clean = fragment
+        .replace(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/g, ' ')
+        .replace(/\b\d{1,3}(?:\s+\d{3})+\b/g, ' ');
+    const rawNums = clean.match(/\b\d{1,5}(?:[.,]\d{1,4})?\b/g) || [];
     const valid = [];
     for (const r of rawNums) {
         const n = normalizeRateValue(Number(r.replace(',', '.')), ref);
         if (n != null) valid.push(n);
     }
     if (valid.length < 2) return null;
-    const a = valid[0];
-    const b = valid[1];
-    // Иногда на сайте банка Продажа стоит левее Покупки — приводим к buy <= sell
-    const buy = Math.min(a, b);
-    const sell = Math.max(a, b);
-    if ((sell - buy) / buy > 0.15) return null;
+    const buy = Math.min(valid[0], valid[1]);
+    const sell = Math.max(valid[0], valid[1]);
+    if ((sell - buy) / buy > 0.12) return null;
     return { buy, sell };
 }
 
-function parseOfficialBankHtml(html, anchors) {
+function parseSplitBuySell(plainText, anchors) {
+    // Формат вида "Купівля: USD 44.80; EUR 49.60 ... Продаж: USD 45.50; EUR 50.40" (Индустриалбанк и др.)
     const out = {};
+    const buyBlock = plainText.match(/купівл[яі]\s*[:\-]?\s*([\s\S]{10,220})/i);
+    const sellBlock = plainText.match(/продаж[у]?\s*[:\-]?\s*([\s\S]{10,220})/i);
+    if (!buyBlock || !sellBlock) return out;
 
-    // Если на странице есть блок именно карточных курсов — проверяем его в первую очередь
-    const plainFull = stripHtmlTags(html);
-    const cardMatch = plainFull.match(/(?:для\s+карт|картков|for\s+cards|комерційний\s+курс)[\s\S]{0,1800}/i);
+    for (const cc of BANK_CURRENCIES) {
+        const ref = anchors[cc];
+        const re = new RegExp(`\\b${cc}\\b[^\\d]{0,20}(\\d{1,5}(?:[.,]\\d{1,4})?)`, 'i');
+        const bm = buyBlock[1].match(re);
+        const sm = sellBlock[1].match(re);
+        if (bm && sm) {
+            const b = normalizeRateValue(Number(bm[1].replace(',', '.')), ref);
+            const s = normalizeRateValue(Number(sm[1].replace(',', '.')), ref);
+            if (b != null && s != null) {
+                const buy = Math.min(b, s);
+                const sell = Math.max(b, s);
+                if ((sell - buy) / buy <= 0.12) out[cc] = { buy, sell };
+            }
+        }
+    }
+    return out;
+}
+
+function parseOfficialBankHtml(html, anchors, isPlain = false) {
+    const out = {};
+    const plainFull = isPlain ? html.replace(/\s+/g, ' ').trim() : stripHtmlTags(html);
+
+    const cardMatch = plainFull.match(/(?:для\s+карт|картков|for\s+cards|комерційний\s+курс|онлайн\s+у\s+winbank)[\s\S]{0,1800}/i);
     const scopes = cardMatch ? [cardMatch[0], plainFull] : [plainFull];
 
-    // 1. Сначала ищем в строках таблиц <tr>
-    const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
-    for (const row of rows) {
-        const rowText = stripHtmlTags(row);
-        for (const cc of BANK_CURRENCIES) {
-            if (out[cc]) continue;
-            // Исключаем кросс-курсы вида EUR/USD или USD/EUR
-            const re = new RegExp(`\\b${cc}\\b(?!\\s*[\\/-]\\s*(?:USD|EUR|GBP|PLN))`, 'i');
-            if (!re.test(rowText)) continue;
-            const pair = extractCurrencyFromFragment(rowText, cc, anchors[cc]);
-            if (pair) out[cc] = pair;
+    // 1. Табличные строки <tr>
+    if (!isPlain) {
+        const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
+        for (const row of rows) {
+            const rowText = stripHtmlTags(row);
+            for (const cc of BANK_CURRENCIES) {
+                if (out[cc]) continue;
+                const re = new RegExp(`\\b${cc}\\b(?!\\s*[\\/-]\\s*(?:USD|EUR|GBP|PLN))`, 'i');
+                if (!re.test(rowText)) continue;
+                const pair = extractCurrencyFromFragment(rowText, anchors[cc]);
+                if (pair) out[cc] = pair;
+            }
         }
     }
 
-    // 2. Если на сайте не таблица, а карточки/блоки <div> (Райф, ПУМБ, Ощад, Сенс и др.)
+    // 2. Карточный / блочный текст рядом с кодом валюты
     for (const scope of scopes) {
         for (const cc of BANK_CURRENCIES) {
             if (out[cc]) continue;
             const re = new RegExp(`\\b${cc}\\b(?!\\s*[\\/-]\\s*(?:USD|EUR|GBP|PLN))`, 'gi');
             let m;
             while ((m = re.exec(scope)) !== null) {
-                const snippet = scope.slice(m.index, m.index + 140);
-                const pair = extractCurrencyFromFragment(snippet, cc, anchors[cc]);
+                const snippet = scope.slice(m.index, m.index + 160);
+                const pair = extractCurrencyFromFragment(snippet, anchors[cc]);
                 if (pair) {
                     out[cc] = pair;
                     break;
@@ -201,27 +259,42 @@ function parseOfficialBankHtml(html, anchors) {
         }
     }
 
+    // 3. Раздельный формат "Купівля: USD ... Продаж: USD ..."
+    if (!out.USD && !out.EUR) {
+        Object.assign(out, parseSplitBuySell(plainFull, anchors));
+    }
+
     return Object.keys(out).length ? out : null;
+}
+
+async function fetchViaWorker(url) {
+    const resText = await fetchText(`${WORKER_PROXY}${encodeURIComponent(url)}`, 15000);
+    return resText;
 }
 
 async function saveOfficialBanks() {
     const anchors = await getNbuAnchors();
+    const pendingPlaywright = [];
     let saved = 0;
 
+    // Уровень 1 и 2: быстрый fetch + резерв через Cloudflare Worker
     for (const bank of OFFICIAL_BANK_SOURCES) {
         let found = null;
         let usedUrl = null;
 
         for (const url of bank.urls) {
-            try {
-                const html = await fetchText(url, 15000);
-                const parsed = parseOfficialBankHtml(html, anchors);
-                if (parsed) {
-                    found = parsed;
-                    usedUrl = url;
-                    break;
-                }
-            } catch {}
+            for (const attempt of [() => fetchText(url, 12000), () => fetchViaWorker(url)]) {
+                try {
+                    const html = await attempt();
+                    const parsed = parseOfficialBankHtml(html, anchors, false);
+                    if (parsed) {
+                        found = parsed;
+                        usedUrl = url;
+                        break;
+                    }
+                } catch {}
+            }
+            if (found) break;
         }
 
         if (found) {
@@ -230,10 +303,64 @@ async function saveOfficialBanks() {
             console.log(`bank    : ${bank.id.padEnd(15)} → ${summary}`);
             saved++;
         } else {
-            const prev = await readJson(bank.id);
-            console.log(`bank    : ${bank.id.padEnd(15)} → no data${prev ? ' (kept previous)' : ''}`);
+            pendingPlaywright.push(bank);
         }
-        await new Promise(r => setTimeout(r, 350));
+        await new Promise(r => setTimeout(r, 200));
+    }
+
+    // Уровень 3: обход SPA/антиботов через реальный Chromium (если установлен playwright)
+    if (pendingPlaywright.length > 0) {
+        let chromium = null;
+        try {
+            const pw = await import('playwright');
+            chromium = pw.chromium;
+        } catch {}
+
+        if (chromium) {
+            console.log(`banks   : running Chromium bypass for ${pendingPlaywright.length} banks...`);
+            const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+            try {
+                const context = await browser.newContext({
+                    userAgent: BROWSER_HEADERS['User-Agent'],
+                    locale: 'uk-UA'
+                });
+                const page = await context.newPage();
+
+                for (const bank of pendingPlaywright) {
+                    let found = null;
+                    let usedUrl = null;
+                    for (const url of bank.urls) {
+                        try {
+                            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+                            await page.waitForTimeout(2500);
+                            const text = await page.evaluate(() => document.body?.innerText || '');
+                            const parsed = parseOfficialBankHtml(text, anchors, true);
+                            if (parsed) {
+                                found = parsed;
+                                usedUrl = url;
+                                break;
+                            }
+                        } catch {}
+                    }
+                    if (found) {
+                        await writeJson(bank.id, found, { source: new URL(usedUrl).hostname, via: 'chromium' });
+                        const summary = Object.entries(found).map(([c, v]) => `${c}:${v.buy}/${v.sell}`).join(' ');
+                        console.log(`bank    : ${bank.id.padEnd(15)} → ${summary} [chromium]`);
+                        saved++;
+                    } else {
+                        const prev = await readJson(bank.id);
+                        console.log(`bank    : ${bank.id.padEnd(15)} → no data${prev ? ' (kept previous)' : ''}`);
+                    }
+                }
+            } finally {
+                await browser.close();
+            }
+        } else {
+            for (const bank of pendingPlaywright) {
+                const prev = await readJson(bank.id);
+                console.log(`bank    : ${bank.id.padEnd(15)} → skipped (install playwright for JS/CF bypass)${prev ? ' [kept previous]' : ''}`);
+            }
+        }
     }
 
     console.log(`banks   : saved ${saved}/${OFFICIAL_BANK_SOURCES.length} official banks`);
