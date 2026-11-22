@@ -7,6 +7,7 @@ await fs.mkdir(DATA_DIR, { recursive: true });
 const UA = { 'User-Agent': 'nbu-rate-bot (https://github.com/He-Trogati-Mne/nbu-rate-data)' };
 const BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
     'Accept-Language': 'uk-UA,uk;q=0.9,en;q=0.8'
 };
 
@@ -88,90 +89,28 @@ async function saveMono() {
     console.log(`mono    : ${data.length} rates`);
 }
 
-/* ─────────────── Other Ukrainian Banks ─────────────── */
+/* ─────────────── Official Bank Websites (no aggregators) ─────────────── */
 
 const BANK_CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN'];
 
-const BANK_ALIASES = {
-    oschad: ['ощадбанк', 'oschadbank', 'ощад'],
-    pumb: ['пумб', 'pumb', 'перший український міжнародний'],
-    raif: ['райффайзен', 'raiffeisen', 'аваль'],
-    ukrsib: ['укрсиббанк', 'ukrsibbank', 'укрсиб'],
-    sense: ['сенс банк', 'sense bank', 'sensebank', 'сенс'],
-    otp: ['отп банк', 'otp bank', 'отп'],
-    ukrexim: ['укрексімбанк', 'ukreximbank', 'укрэксимбанк'],
-    ukrgas: ['укргазбанк', 'ukrgasbank'],
-    'a-bank': ['а-банк', 'абанк', 'a-bank', 'акцент-банк'],
-    kredo: ['кредобанк', 'kredobank'],
-    tas: ['таскомбанк', 'tascombank', 'тас'],
-    'credit-agricole': ['креді агріколь', 'креди агриколь', 'credit agricole'],
-    pinbank: ['перший інвестиційний', 'пинбанк', 'пінбанк', 'pinbank'],
-    ubrr: ['убрр', 'ubrr'],
-    procredit: ['прокредит', 'procredit'],
-    pravex: ['правекс', 'pravex'],
-    idea: ['ідея банк', 'идея банк', 'idea bank'],
-    piraeus: ['піреус', 'пиреус', 'piraeus'],
-    citibank: ['сітібанк', 'ситибанк', 'citibank'],
-    ing: ['інг банк', 'инг банк', 'ing bank'],
-    deutsche: ['дойче банк', 'deutsche bank'],
-    seb: ['себ корпоративний', 'seb'],
-    creditwest: ['кредитвест', 'creditwest'],
-    bta: ['бта банк', 'bta bank'],
-    universal: ['універсал банк', 'универсал банк', 'universal bank'],
-    pivdenny: ['південний', 'пивденный', 'pivdenny'],
-    'credit-dnipro': ['кредит дніпро', 'кредит днепр', 'credit dnipro'],
-    mtb: ['мтб банк', 'mtb bank', 'марфін'],
-    vostok: ['восток', 'vostok'],
-    accord: ['акордбанк', 'аккордбанк', 'accordbank'],
-    lviv: ['банк львів', 'банк львов', 'bank lviv', 'львів'],
-    globus: ['глобус', 'globus'],
-    alliance: ['альянс', 'alliance'],
-    industrial: ['індустріалбанк', 'индустриалбанк', 'industrialbank'],
-    radabank: ['радабанк', 'radabank'],
-    mib: ['міжнародний інвестиційний банк', 'международный инвестиционный', 'міб', 'миб'],
-    asvio: ['асвіо', 'асвио', 'asvio'],
-    komin: ['комінбанк', 'коминбанк', 'комерційний індустріальний', 'kominbank', 'cib'],
-    krystal: ['кристалбанк', 'krystalbank'],
-    agroprosperis: ['агропросперіс', 'агропросперис', 'agroprosperis'],
-    clearing: ['кліринговий дім', 'клиринговый дом', 'clearing house'],
-    poltava: ['полтава-банк', 'полтава банк', 'poltava-bank'],
-    polikom: ['полікомбанк', 'поликомбанк', 'polikombank'],
-    unex: ['юнекс', 'unex'],
-    altbank: ['альтбанк', 'altbank'],
-    sky: ['скай банк', 'sky bank'],
-    ukrcapital: ['український капітал', 'украинский капитал', 'ukrcapital'],
-    bank34: ['банк 3/4', '3/4', 'банк3/4'],
-    avangard: ['авангард', 'avangard'],
-    bizbank: ['бізбанк', 'бизбанк', 'інвестицій та заощаджень', 'инвестиций и сбережений', 'біз'],
-    metabank: ['метабанк', 'металлург', 'metabank'],
-    oksi: ['оксі банк', 'окси банк', 'оксі', 'oxi'],
-    grant: ['грант', 'grant'],
-    europrom: ['європромбанк', 'европромбанк', 'europrombank'],
-    family: ['фамільний', 'фамильный', 'family'],
-    'trust-capital': ['траст-капітал', 'траст-капитал', 'trust-capital'],
-    ute: ['юте банк', 'рвс банк', 'iute', 'rws'],
-    nexent: ['нексент', 'nexent', 'кредит європа', 'кредит европа']
-};
-
-const SORTED_BANK_ALIASES = Object.entries(BANK_ALIASES)
-    .flatMap(([id, names]) => names.map(name => ({ id, name: name.toLowerCase() })))
-    .sort((a, b) => b.name.length - a.name.length);
-
-function matchBankId(rawName) {
-    const clean = String(rawName || '')
-        .toLowerCase()
-        .replace(/["'«»„“()]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    if (!clean) return null;
-    if (clean.includes('приват') || clean.includes('privat') || clean.includes('моно') || clean.includes('mono')) {
-        return null;
-    }
-    for (const { id, name } of SORTED_BANK_ALIASES) {
-        if (clean.includes(name)) return id;
-    }
-    return null;
-}
+const OFFICIAL_BANK_SOURCES = [
+    { id: 'oschad',          urls: ['https://www.oschadbank.ua/currency-rate'] },
+    { id: 'pumb',            urls: ['https://www.pumb.ua/info/currency_exchange', 'https://www.pumb.ua/en', 'https://www.pumb.ua/'] },
+    { id: 'raif',            urls: ['https://raiffeisen.ua/currency'] },
+    { id: 'ukrsib',          urls: ['https://ukrsibbank.com/currency-cash/'] },
+    { id: 'sense',           urls: ['https://sensebank.com.ua/currency-exchange'] },
+    { id: 'ukrgas',          urls: ['https://www.ukrgasbank.com/'] },
+    { id: 'ukrexim',         urls: ['https://www.eximb.com/ua/business/pryvatnym-klientam/pryvatnym-klientam-inshi-poslugy/obmin-valyut/kursy-valyut/', 'https://www.eximb.com/ua/'] },
+    { id: 'pivdenny',        urls: ['https://bank.com.ua/'] },
+    { id: 'credit-agricole', urls: ['https://credit-agricole.ua/kurs-valyut', 'https://credit-agricole.ua/'] },
+    { id: 'globus',          urls: ['https://globusbank.com.ua/ua/kurs-valyut.html', 'https://globusbank.com.ua/', 'https://globusplus.ua/'] },
+    { id: 'lviv',            urls: ['https://www.banklviv.com/'] },
+    { id: 'a-bank',          urls: ['https://a-bank.com.ua/'] },
+    { id: 'kredo',           urls: ['https://kredobank.com.ua/info/kursy-valyut/cards', 'https://kredobank.com.ua/info/kursy-valyut'] },
+    { id: 'otp',             urls: ['https://www.otpbank.com.ua/privateclients/pay-cards/currency-converter-cards.php', 'https://www.otpbank.com.ua/'] },
+    { id: 'pravex',          urls: ['https://www.pravex.com.ua/kursy-valyut', 'https://www.pravex.com.ua/'] },
+    { id: 'tas',             urls: ['https://tascombank.ua/'] }
+];
 
 function stripHtmlTags(html) {
     return html
@@ -196,126 +135,108 @@ async function getNbuAnchors() {
     return anchors;
 }
 
-function isValidBankPair(cc, buy, sell, anchors) {
-    const ref = anchors[cc];
-    if (!ref || !Number.isFinite(buy) || !Number.isFinite(sell)) return false;
-    if (buy < ref * 0.75 || buy > ref * 1.4) return false;
-    if (sell < ref * 0.75 || sell > ref * 1.4) return false;
-    if (buy > sell * 1.02) return false;
-    return true;
+function normalizeRateValue(val, ref) {
+    if (!Number.isFinite(val) || !ref) return null;
+    // Некоторые банки (например, Укргазбанк) указывают курс за 100 единиц: 4490.00 -> 44.90
+    if (val >= ref * 75 && val <= ref * 140) val = val / 100;
+    if (val >= ref * 0.75 && val <= ref * 1.4) {
+        return Math.round(val * 10000) / 10000;
+    }
+    return null;
 }
 
-function parseBankTable(html, cc, anchors, banksMap, sourceName) {
-    let added = 0;
+function extractCurrencyFromFragment(fragment, cc, ref) {
+    const rawNums = fragment.match(/\b\d{1,5}[.,]\d{2,4}\b/g) || [];
+    const valid = [];
+    for (const r of rawNums) {
+        const n = normalizeRateValue(Number(r.replace(',', '.')), ref);
+        if (n != null) valid.push(n);
+    }
+    if (valid.length < 2) return null;
+    const a = valid[0];
+    const b = valid[1];
+    // Иногда на сайте банка Продажа стоит левее Покупки — приводим к buy <= sell
+    const buy = Math.min(a, b);
+    const sell = Math.max(a, b);
+    if ((sell - buy) / buy > 0.15) return null;
+    return { buy, sell };
+}
+
+function parseOfficialBankHtml(html, anchors) {
+    const out = {};
+
+    // Если на странице есть блок именно карточных курсов — проверяем его в первую очередь
+    const plainFull = stripHtmlTags(html);
+    const cardMatch = plainFull.match(/(?:для\s+карт|картков|for\s+cards|комерційний\s+курс)[\s\S]{0,1800}/i);
+    const scopes = cardMatch ? [cardMatch[0], plainFull] : [plainFull];
+
+    // 1. Сначала ищем в строках таблиц <tr>
     const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
     for (const row of rows) {
-        const cells = row.match(/<t[dh]\b[\s\S]*?<\/t[dh]>/gi);
-        if (!cells || cells.length < 3) continue;
-
-        const bankId = matchBankId(stripHtmlTags(cells[0]));
-        if (!bankId) continue;
-
-        const nums = [];
-        for (let i = 1; i < cells.length; i++) {
-            const matches = stripHtmlTags(cells[i]).match(/\b\d{1,3}[.,]\d{2,4}\b/g) || [];
-            for (const m of matches) {
-                const val = Number(m.replace(',', '.'));
-                if (val >= anchors[cc] * 0.75 && val <= anchors[cc] * 1.4) {
-                    nums.push(val);
-                }
-            }
+        const rowText = stripHtmlTags(row);
+        for (const cc of BANK_CURRENCIES) {
+            if (out[cc]) continue;
+            // Исключаем кросс-курсы вида EUR/USD или USD/EUR
+            const re = new RegExp(`\\b${cc}\\b(?!\\s*[\\/-]\\s*(?:USD|EUR|GBP|PLN))`, 'i');
+            if (!re.test(rowText)) continue;
+            const pair = extractCurrencyFromFragment(rowText, cc, anchors[cc]);
+            if (pair) out[cc] = pair;
         }
+    }
 
-        if (nums.length >= 2) {
-            const buy = nums[0];
-            const sell = nums[1];
-            if (isValidBankPair(cc, buy, sell, anchors)) {
-                if (!banksMap[bankId]) banksMap[bankId] = { source: sourceName, data: {} };
-                if (!banksMap[bankId].data[cc]) {
-                    banksMap[bankId].data[cc] = {
-                        buy: Math.round(buy * 10000) / 10000,
-                        sell: Math.round(sell * 10000) / 10000
-                    };
-                    added++;
+    // 2. Если на сайте не таблица, а карточки/блоки <div> (Райф, ПУМБ, Ощад, Сенс и др.)
+    for (const scope of scopes) {
+        for (const cc of BANK_CURRENCIES) {
+            if (out[cc]) continue;
+            const re = new RegExp(`\\b${cc}\\b(?!\\s*[\\/-]\\s*(?:USD|EUR|GBP|PLN))`, 'gi');
+            let m;
+            while ((m = re.exec(scope)) !== null) {
+                const snippet = scope.slice(m.index, m.index + 140);
+                const pair = extractCurrencyFromFragment(snippet, cc, anchors[cc]);
+                if (pair) {
+                    out[cc] = pair;
+                    break;
                 }
             }
         }
     }
-    return added;
+
+    return Object.keys(out).length ? out : null;
 }
 
-function parseMinfinCardTable(html, anchors, banksMap) {
-    let added = 0;
-    const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
-    for (const row of rows) {
-        const cells = row.match(/<t[dh]\b[\s\S]*?<\/t[dh]>/gi);
-        if (!cells || cells.length < 3) continue;
-
-        const bankId = matchBankId(stripHtmlTags(cells[0]));
-        if (!bankId) continue;
-
-        const nums = (stripHtmlTags(cells.slice(1).join(' ')).match(/\b\d{1,3}[.,]\d{2,4}\b/g) || [])
-            .map(m => Number(m.replace(',', '.')));
-
-        for (let i = 0; i < nums.length - 1; i++) {
-            const a = nums[i];
-            const b = nums[i + 1];
-            if (isValidBankPair('USD', a, b, anchors)) {
-                if (!banksMap[bankId]) banksMap[bankId] = { source: 'minfin-card', data: {} };
-                if (!banksMap[bankId].data.USD) {
-                    banksMap[bankId].data.USD = { buy: a, sell: b };
-                    added++;
-                }
-            } else if (isValidBankPair('EUR', a, b, anchors)) {
-                if (!banksMap[bankId]) banksMap[bankId] = { source: 'minfin-card', data: {} };
-                if (!banksMap[bankId].data.EUR) {
-                    banksMap[bankId].data.EUR = { buy: a, sell: b };
-                    added++;
-                }
-            }
-        }
-    }
-    return added;
-}
-
-async function saveOtherBanks() {
+async function saveOfficialBanks() {
     const anchors = await getNbuAnchors();
-    const banksMap = {};
-
-    try {
-        const cardHtml = await fetchText('https://minfin.com.ua/ua/currency/banks/card/');
-        const c = parseMinfinCardTable(cardHtml, anchors, banksMap);
-        console.log(`banks   : minfin-card +${c}`);
-    } catch (e) {
-        console.log(`banks   : minfin-card → ${e.message}`);
-    }
-
-    for (const cc of BANK_CURRENCIES) {
-        const low = cc.toLowerCase();
-        const sources = [
-            { name: 'minfin.com.ua', url: `https://minfin.com.ua/ua/currency/banks/${low}/` },
-            { name: 'banki.ua',      url: `https://banki.ua/kursy-valyut/${low}` },
-            { name: 'kurs.com.ua',   url: `https://kurs.com.ua/ua/banki/${low}` }
-        ];
-        for (const src of sources) {
-            try {
-                const html = await fetchText(src.url);
-                const c = parseBankTable(html, cc, anchors, banksMap, src.name);
-                if (c > 0) console.log(`banks   : ${src.name} ${cc} +${c}`);
-            } catch (e) {
-                console.log(`banks   : ${src.name} ${cc} → ${e.message}`);
-            }
-            await new Promise(r => setTimeout(r, 300));
-        }
-    }
-
     let saved = 0;
-    for (const [bankId, payload] of Object.entries(banksMap)) {
-        if (!payload.data || Object.keys(payload.data).length === 0) continue;
-        await writeJson(bankId, payload.data, { source: payload.source });
-        saved++;
+
+    for (const bank of OFFICIAL_BANK_SOURCES) {
+        let found = null;
+        let usedUrl = null;
+
+        for (const url of bank.urls) {
+            try {
+                const html = await fetchText(url, 15000);
+                const parsed = parseOfficialBankHtml(html, anchors);
+                if (parsed) {
+                    found = parsed;
+                    usedUrl = url;
+                    break;
+                }
+            } catch {}
+        }
+
+        if (found) {
+            await writeJson(bank.id, found, { source: new URL(usedUrl).hostname });
+            const summary = Object.entries(found).map(([c, v]) => `${c}:${v.buy}/${v.sell}`).join(' ');
+            console.log(`bank    : ${bank.id.padEnd(15)} → ${summary}`);
+            saved++;
+        } else {
+            const prev = await readJson(bank.id);
+            console.log(`bank    : ${bank.id.padEnd(15)} → no data${prev ? ' (kept previous)' : ''}`);
+        }
+        await new Promise(r => setTimeout(r, 350));
     }
-    console.log(`banks   : saved ${saved} bank files`);
+
+    console.log(`banks   : saved ${saved}/${OFFICIAL_BANK_SOURCES.length} official banks`);
 }
 
 /* ─────────────── NBU history 2003 → now ─────────────── */
@@ -609,7 +530,7 @@ const COINS = [
     'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
     'usd-coin', 'ripple', 'cardano', 'dogecoin', 'avalanche-2',
     'tron', 'the-open-network', 'chainlink', 'polkadot', 'litecoin',
-    'shiba-inu', 'dai', 'wrapped-bitcoin', 'uniswap', 'near',
+    'dai', 'wrapped-bitcoin', 'uniswap', 'near',
     'aptos', 'arbitrum', 'optimism', 'sui', 'stellar'
 ];
 
@@ -629,7 +550,6 @@ const CC_SYMBOL = {
     'chainlink':        'LINK',
     'polkadot':         'DOT',
     'litecoin':         'LTC',
-    'shiba-inu':        'SHIB',
     'dai':              'DAI',
     'wrapped-bitcoin':  'WBTC',
     'uniswap':          'UNI',
@@ -729,6 +649,7 @@ async function saveCrypto() {
             id: m.id,
             symbol: (m.symbol || '').toUpperCase(),
             name: m.name,
+            image: m.image || existingMap[m.id]?.image || null,
             price: m.current_price,
             change24h: m.price_change_percentage_24h || 0,
             history: merged
@@ -785,7 +706,7 @@ results.forEach((r, i) => {
     }
 });
 
-await saveOtherBanks().catch(e => console.error('FAIL banks: ' + e.message));
+await saveOfficialBanks().catch(e => console.error('FAIL banks: ' + e.message));
 await saveNBUHistory().catch(e => console.error('FAIL nbu-history: ' + e.message));
 await saveCrypto().catch(e => console.error('FAIL crypto: ' + e.message));
 
