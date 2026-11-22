@@ -5,6 +5,10 @@ const DATA_DIR = 'data';
 await fs.mkdir(DATA_DIR, { recursive: true });
 
 const UA = { 'User-Agent': 'nbu-rate-bot (https://github.com/He-Trogati-Mne/nbu-rate-data)' };
+const BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept-Language': 'uk-UA,uk;q=0.9,en;q=0.8'
+};
 
 async function readJson(name) {
     try {
@@ -43,6 +47,18 @@ async function fetchJson(url, { retries = 4, baseDelay = 4000 } = {}) {
     return null;
 }
 
+async function fetchText(url, timeoutMs = 15000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, { signal: ctrl.signal, headers: BROWSER_HEADERS });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.text();
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 function num(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
@@ -72,6 +88,236 @@ async function saveMono() {
     console.log(`mono    : ${data.length} rates`);
 }
 
+/* ─────────────── Other Ukrainian Banks ─────────────── */
+
+const BANK_CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN'];
+
+const BANK_ALIASES = {
+    oschad: ['ощадбанк', 'oschadbank', 'ощад'],
+    pumb: ['пумб', 'pumb', 'перший український міжнародний'],
+    raif: ['райффайзен', 'raiffeisen', 'аваль'],
+    ukrsib: ['укрсиббанк', 'ukrsibbank', 'укрсиб'],
+    sense: ['сенс банк', 'sense bank', 'sensebank', 'сенс'],
+    otp: ['отп банк', 'otp bank', 'отп'],
+    ukrexim: ['укрексімбанк', 'ukreximbank', 'укрэксимбанк'],
+    ukrgas: ['укргазбанк', 'ukrgasbank'],
+    'a-bank': ['а-банк', 'абанк', 'a-bank', 'акцент-банк'],
+    kredo: ['кредобанк', 'kredobank'],
+    tas: ['таскомбанк', 'tascombank', 'тас'],
+    'credit-agricole': ['креді агріколь', 'креди агриколь', 'credit agricole'],
+    pinbank: ['перший інвестиційний', 'пинбанк', 'пінбанк', 'pinbank'],
+    ubrr: ['убрр', 'ubrr'],
+    procredit: ['прокредит', 'procredit'],
+    pravex: ['правекс', 'pravex'],
+    idea: ['ідея банк', 'идея банк', 'idea bank'],
+    piraeus: ['піреус', 'пиреус', 'piraeus'],
+    citibank: ['сітібанк', 'ситибанк', 'citibank'],
+    ing: ['інг банк', 'инг банк', 'ing bank'],
+    deutsche: ['дойче банк', 'deutsche bank'],
+    seb: ['себ корпоративний', 'seb'],
+    creditwest: ['кредитвест', 'creditwest'],
+    bta: ['бта банк', 'bta bank'],
+    universal: ['універсал банк', 'универсал банк', 'universal bank'],
+    pivdenny: ['південний', 'пивденный', 'pivdenny'],
+    'credit-dnipro': ['кредит дніпро', 'кредит днепр', 'credit dnipro'],
+    mtb: ['мтб банк', 'mtb bank', 'марфін'],
+    vostok: ['восток', 'vostok'],
+    accord: ['акордбанк', 'аккордбанк', 'accordbank'],
+    lviv: ['банк львів', 'банк львов', 'bank lviv', 'львів'],
+    globus: ['глобус', 'globus'],
+    alliance: ['альянс', 'alliance'],
+    industrial: ['індустріалбанк', 'индустриалбанк', 'industrialbank'],
+    radabank: ['радабанк', 'radabank'],
+    mib: ['міжнародний інвестиційний банк', 'международный инвестиционный', 'міб', 'миб'],
+    asvio: ['асвіо', 'асвио', 'asvio'],
+    komin: ['комінбанк', 'коминбанк', 'комерційний індустріальний', 'kominbank', 'cib'],
+    krystal: ['кристалбанк', 'krystalbank'],
+    agroprosperis: ['агропросперіс', 'агропросперис', 'agroprosperis'],
+    clearing: ['кліринговий дім', 'клиринговый дом', 'clearing house'],
+    poltava: ['полтава-банк', 'полтава банк', 'poltava-bank'],
+    polikom: ['полікомбанк', 'поликомбанк', 'polikombank'],
+    unex: ['юнекс', 'unex'],
+    altbank: ['альтбанк', 'altbank'],
+    sky: ['скай банк', 'sky bank'],
+    ukrcapital: ['український капітал', 'украинский капитал', 'ukrcapital'],
+    bank34: ['банк 3/4', '3/4', 'банк3/4'],
+    avangard: ['авангард', 'avangard'],
+    bizbank: ['бізбанк', 'бизбанк', 'інвестицій та заощаджень', 'инвестиций и сбережений', 'біз'],
+    metabank: ['метабанк', 'металлург', 'metabank'],
+    oksi: ['оксі банк', 'окси банк', 'оксі', 'oxi'],
+    grant: ['грант', 'grant'],
+    europrom: ['європромбанк', 'европромбанк', 'europrombank'],
+    family: ['фамільний', 'фамильный', 'family'],
+    'trust-capital': ['траст-капітал', 'траст-капитал', 'trust-capital'],
+    ute: ['юте банк', 'рвс банк', 'iute', 'rws'],
+    nexent: ['нексент', 'nexent', 'кредит європа', 'кредит европа']
+};
+
+const SORTED_BANK_ALIASES = Object.entries(BANK_ALIASES)
+    .flatMap(([id, names]) => names.map(name => ({ id, name: name.toLowerCase() })))
+    .sort((a, b) => b.name.length - a.name.length);
+
+function matchBankId(rawName) {
+    const clean = String(rawName || '')
+        .toLowerCase()
+        .replace(/["'«»„“()]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!clean) return null;
+    if (clean.includes('приват') || clean.includes('privat') || clean.includes('моно') || clean.includes('mono')) {
+        return null;
+    }
+    for (const { id, name } of SORTED_BANK_ALIASES) {
+        if (clean.includes(name)) return id;
+    }
+    return null;
+}
+
+function stripHtmlTags(html) {
+    return html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+async function getNbuAnchors() {
+    const anchors = { USD: 41.5, EUR: 44.5, GBP: 53.0, PLN: 10.3 };
+    const nbu = await readJson('nbu');
+    const list = Array.isArray(nbu?.data) ? nbu.data : [];
+    for (const item of list) {
+        if (BANK_CURRENCIES.includes(item.cc) && Number(item.rate) > 0) {
+            anchors[item.cc] = Number(item.rate);
+        }
+    }
+    return anchors;
+}
+
+function isValidBankPair(cc, buy, sell, anchors) {
+    const ref = anchors[cc];
+    if (!ref || !Number.isFinite(buy) || !Number.isFinite(sell)) return false;
+    if (buy < ref * 0.75 || buy > ref * 1.4) return false;
+    if (sell < ref * 0.75 || sell > ref * 1.4) return false;
+    if (buy > sell * 1.02) return false;
+    return true;
+}
+
+function parseBankTable(html, cc, anchors, banksMap, sourceName) {
+    let added = 0;
+    const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
+    for (const row of rows) {
+        const cells = row.match(/<t[dh]\b[\s\S]*?<\/t[dh]>/gi);
+        if (!cells || cells.length < 3) continue;
+
+        const bankId = matchBankId(stripHtmlTags(cells[0]));
+        if (!bankId) continue;
+
+        const nums = [];
+        for (let i = 1; i < cells.length; i++) {
+            const matches = stripHtmlTags(cells[i]).match(/\b\d{1,3}[.,]\d{2,4}\b/g) || [];
+            for (const m of matches) {
+                const val = Number(m.replace(',', '.'));
+                if (val >= anchors[cc] * 0.75 && val <= anchors[cc] * 1.4) {
+                    nums.push(val);
+                }
+            }
+        }
+
+        if (nums.length >= 2) {
+            const buy = nums[0];
+            const sell = nums[1];
+            if (isValidBankPair(cc, buy, sell, anchors)) {
+                if (!banksMap[bankId]) banksMap[bankId] = { source: sourceName, data: {} };
+                if (!banksMap[bankId].data[cc]) {
+                    banksMap[bankId].data[cc] = {
+                        buy: Math.round(buy * 10000) / 10000,
+                        sell: Math.round(sell * 10000) / 10000
+                    };
+                    added++;
+                }
+            }
+        }
+    }
+    return added;
+}
+
+function parseMinfinCardTable(html, anchors, banksMap) {
+    let added = 0;
+    const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
+    for (const row of rows) {
+        const cells = row.match(/<t[dh]\b[\s\S]*?<\/t[dh]>/gi);
+        if (!cells || cells.length < 3) continue;
+
+        const bankId = matchBankId(stripHtmlTags(cells[0]));
+        if (!bankId) continue;
+
+        const nums = (stripHtmlTags(cells.slice(1).join(' ')).match(/\b\d{1,3}[.,]\d{2,4}\b/g) || [])
+            .map(m => Number(m.replace(',', '.')));
+
+        for (let i = 0; i < nums.length - 1; i++) {
+            const a = nums[i];
+            const b = nums[i + 1];
+            if (isValidBankPair('USD', a, b, anchors)) {
+                if (!banksMap[bankId]) banksMap[bankId] = { source: 'minfin-card', data: {} };
+                if (!banksMap[bankId].data.USD) {
+                    banksMap[bankId].data.USD = { buy: a, sell: b };
+                    added++;
+                }
+            } else if (isValidBankPair('EUR', a, b, anchors)) {
+                if (!banksMap[bankId]) banksMap[bankId] = { source: 'minfin-card', data: {} };
+                if (!banksMap[bankId].data.EUR) {
+                    banksMap[bankId].data.EUR = { buy: a, sell: b };
+                    added++;
+                }
+            }
+        }
+    }
+    return added;
+}
+
+async function saveOtherBanks() {
+    const anchors = await getNbuAnchors();
+    const banksMap = {};
+
+    try {
+        const cardHtml = await fetchText('https://minfin.com.ua/ua/currency/banks/card/');
+        const c = parseMinfinCardTable(cardHtml, anchors, banksMap);
+        console.log(`banks   : minfin-card +${c}`);
+    } catch (e) {
+        console.log(`banks   : minfin-card → ${e.message}`);
+    }
+
+    for (const cc of BANK_CURRENCIES) {
+        const low = cc.toLowerCase();
+        const sources = [
+            { name: 'minfin.com.ua', url: `https://minfin.com.ua/ua/currency/banks/${low}/` },
+            { name: 'banki.ua',      url: `https://banki.ua/kursy-valyut/${low}` },
+            { name: 'kurs.com.ua',   url: `https://kurs.com.ua/ua/banki/${low}` }
+        ];
+        for (const src of sources) {
+            try {
+                const html = await fetchText(src.url);
+                const c = parseBankTable(html, cc, anchors, banksMap, src.name);
+                if (c > 0) console.log(`banks   : ${src.name} ${cc} +${c}`);
+            } catch (e) {
+                console.log(`banks   : ${src.name} ${cc} → ${e.message}`);
+            }
+            await new Promise(r => setTimeout(r, 300));
+        }
+    }
+
+    let saved = 0;
+    for (const [bankId, payload] of Object.entries(banksMap)) {
+        if (!payload.data || Object.keys(payload.data).length === 0) continue;
+        await writeJson(bankId, payload.data, { source: payload.source });
+        saved++;
+    }
+    console.log(`banks   : saved ${saved} bank files`);
+}
+
 /* ─────────────── NBU history 2003 → now ─────────────── */
 
 const NBU_HISTORY_CURRENCIES = [
@@ -85,9 +331,6 @@ const NBU_HISTORY_CURRENCIES = [
 const NBU_HISTORY_FIRST = '20030101';
 const HISTORY_FORMAT_VERSION = 2;
 
-// API НБУ возвращает rate вместе с полем units — количество единиц валюты,
-// за которое указана цена. Для валют units обычно 100, для металлов 1.
-// Универсально: цена за 1 единицу = rate / units.
 function normalizeNBURate(code, rate, units) {
     if (rate == null) return null;
     const u = (Number.isFinite(Number(units)) && Number(units) > 0) ? Number(units) : 1;
@@ -188,7 +431,6 @@ async function saveNBUHistory() {
     const formatVersion = existing?.formatVersion || 1;
     const history = existing?.data || {};
 
-    // Формат v1 (или отсутствует) — битые металлы и, возможно, валюты. Пересобираем.
     if (formatVersion < HISTORY_FORMAT_VERSION) {
         console.log(`nbuhist : format v${formatVersion} < v${HISTORY_FORMAT_VERSION} → full rebuild`);
         await rebuildHistory();
@@ -543,6 +785,7 @@ results.forEach((r, i) => {
     }
 });
 
+await saveOtherBanks().catch(e => console.error('FAIL banks: ' + e.message));
 await saveNBUHistory().catch(e => console.error('FAIL nbu-history: ' + e.message));
 await saveCrypto().catch(e => console.error('FAIL crypto: ' + e.message));
 
