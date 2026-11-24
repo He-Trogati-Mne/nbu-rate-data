@@ -1,30 +1,42 @@
-name: Update rates
-
+name: NBU Rate quick data refresh
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    # UTC; deliberately off minute 00 to reduce GitHub's high-load queue delays.
+    - cron: '13,43 * * * *'
   workflow_dispatch:
-
+permissions:
+  contents: write
+concurrency:
+  group: nbu-data-writer
+  cancel-in-progress: false
 jobs:
   update:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Install Playwright Chromium
+          node-version: '22'
+      - name: Fetch NBU, PrivatBank, Monobank and crypto (fast)
+        run: node scripts/fetch-core.mjs
+      - name: Refresh stock prices and daily history (best effort)
+        run: node scripts/fetch-stocks.mjs
+      - name: Check whether problematic banks are stale
+        run: node scripts/bank-health.mjs
+      - name: Commit only changed data
+        shell: bash
         run: |
-          npm install --no-save --no-package-lock playwright
-          npx playwright install chromium --with-deps
-      - name: Fetch rates
-        run: node scripts/fetch.js
-      - name: Commit & push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add data/
-          git diff --staged --quiet || git commit -m "update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push
+          if git diff --cached --quiet; then
+            echo 'No changes'
+            exit 0
+          fi
+          git commit -m "data: quick update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git pull --rebase origin main
+          git push origin HEAD:main
