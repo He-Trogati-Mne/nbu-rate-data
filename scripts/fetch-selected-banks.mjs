@@ -1,15 +1,15 @@
-/** Six previously frozen banks. Extract only plausible BUY/SELL pairs from OFFICIAL pages.
- * Best-effort: bank sites can dynamically render rates or block bots. Never invent missing prices.
- */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-const banks=[
- ['asvio',['https://www.asviobank.ua/']],
- ['a-bank',['https://a-bank.com.ua/']],
- ['alliance',['https://bankalliance.ua/']],
- ['idea',['https://ideabank.ua/uk/currency-rates','https://ideabank.ua/']],
- ['komin',['https://cib.com.ua/currency-converter','https://cib.com.ua/']],
- ['pumb',['https://www.pumb.ua/info/commercial-rate','https://www.pumb.ua/info/currency_exchange']]
+const banks = [
+  ['asvio', ['https://asviobank.ua/']],
+  ['a-bank', ['https://a-bank.com.ua/']],
+  ['alliance', ['https://alb.ua/currency']],
+  ['idea', ['https://ideabank.ua/uk']],
+  ['komin', ['https://cib.com.ua/']],
+  ['pumb', [
+    'https://www.pumb.ua/purchase_currency',
+    'https://about.pumb.ua/info/currency_converter'
+  ]]
 ];
 const Dir='data';
 const strip=html=>html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&#160;/gi,' ').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim();
@@ -18,7 +18,6 @@ let nbu={};try{const p=JSON.parse(await fs.readFile(path.join(Dir,'nbu.json'),'u
 function parse(html){
  const rows=html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)||[];
  const lines=rows.map(strip);
- // Narrow inline blocks for websites whose rates aren't in <tr> rows.
  const cards=html.match(/<(?:div|li)\b[^>]*>[\s\S]{0,900}?<\/(?:div|li)>/gi)||[];
  lines.push(...cards.slice(0,1000).map(strip).filter(x=>x.length<250));
  const out={};
@@ -27,7 +26,6 @@ function parse(html){
   let best=null;
   for(const line of lines){
    if(!new RegExp(`\\b${cc}\\b`,'i').test(line)||line.length>270)continue;
-   // Reject generic site text without a currency exchange context.
    const hasBuySell=/купівл|продаж|buy|sell|курс|exchange|обмін/i.test(line);
    if(!hasBuySell&&line.length>100)continue;
    const after=line.slice(Math.max(0,line.search(new RegExp(`\\b${cc}\\b`,'i'))));
@@ -42,7 +40,6 @@ function parse(html){
   }
   if(best)out[cc]=best;
  }
- // Must include at least two DIFFERENT currency rates, to reject generic USD figures reused for EUR/GBP.
  if(Object.keys(out).length<2)return null;
  if(out.USD&&out.EUR&&out.USD.buy===out.EUR.buy&&out.USD.sell===out.EUR.sell)return null;
  return out;
