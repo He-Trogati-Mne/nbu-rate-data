@@ -94,14 +94,14 @@ async function saveMono() {
 const BANK_CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN'];
 
 const OFFICIAL_BANK_SOURCES = [
-    { id: 'oschad',          urls: ['https://www.oschadbank.ua/currency-rate'] },
-    { id: 'pumb',            urls: ['https://www.pumb.ua/purchase_currency'] },
+    { id: 'oschad',          urls: ['https://www.oschadbank.ua/msb/currency-rate', 'https://www.oschadbank.ua/currency-rate'] },
+    { id: 'pumb',            urls: ['https://about.pumb.ua/', 'https://about.pumb.ua/info/currency_converter', 'https://www.pumb.ua/purchase_currency'] },
     { id: 'raif',            urls: ['https://raiffeisen.ua/currency'] },
     { id: 'ukrsib',          urls: ['https://ukrsibbank.com/currency-cash/'] },
     { id: 'sense',           urls: ['https://sensebank.com.ua/currency-exchange'] },
     { id: 'ukrgas',          urls: ['https://www.ukrgasbank.com/'] },
     { id: 'ukrexim',         urls: ['https://www.eximb.com/ua/business/pryvatnym-klientam/pryvatnym-klientam-inshi-poslugy/obmin-valyut/kursy-valyut/', 'https://www.eximb.com/ua/'] },
-    { id: 'pivdenny',        urls: ['https://bank.com.ua/currency-metals-rates', 'https://bank.com.ua/'] },
+    { id: 'pivdenny',        urls: ['https://bank.com.ua/currency-metals-rates', 'https://front.bank.com.ua/currency-metals-rates', 'https://bank.com.ua/'] },
     { id: 'credit-agricole', urls: ['https://credit-agricole.ua/kurs-valyut', 'https://credit-agricole.ua/'] },
     { id: 'globus',          urls: ['https://globusbank.com.ua/ua/kurs-valyut.html', 'https://globusbank.com.ua/'] },
     { id: 'lviv',            urls: ['https://www.banklviv.com/'] },
@@ -219,6 +219,57 @@ function parseSplitBuySell(plainText, anchors) {
     return out;
 }
 
+// Заголовки офіційних таблиць можуть мати колонки не в порядку USD, купівля, продаж.
+// Наприклад, Ощадбанк: «Валюта | Код | Кількість одиниць | Купівля | Продаж | Курс НБУ».
+// Читаємо тільки таблиці, де явно присутні заголовки купівлі і продажу.
+function parseBankTablesWithHeaders(html, anchors) {
+    const out = {};
+    const tables = String(html).match(/<table\b[^>]*>[\s\S]*?<\/table>/gi) || [];
+    const codeFor = s => {
+        const normalized = String(s).replace(/\s+/g, ' ').trim().toUpperCase();
+        const m = normalized.match(/(?:^|\W)(USD|EUR|GBP|PLN)(?:\W|$)/);
+        if (m) return m[1];
+        if (/ДОЛАР\s+США|US DOLLAR/.test(normalized)) return 'USD';
+        if (/ЄВРО|\bEURO\b/.test(normalized)) return 'EUR';
+        if (/ФУНТ|POUND/.test(normalized)) return 'GBP';
+        if (/ЗЛОТ|ZLOT/.test(normalized)) return 'PLN';
+        return null;
+    };
+    const amount = (value, ref) => {
+        const clean = String(value || '').replace(/\s/g, '').replace(/₴|грн/gi, '');
+        if (!/^\d{1,3}(?:[.,]\d{1,5})?$/.test(clean)) return null;
+        return normalizeRateValue(Number(clean.replace(',', '.')), ref);
+    };
+    for (const table of tables) {
+        const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(m =>
+            [...m[1].matchAll(/<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi)].map(c => stripHtmlTags(c[1]).trim())
+        ).filter(row => row.length > 0);
+        const headerIndex = rows.findIndex(row => row.some(c => /купівл|купити|buy/i.test(c)) && row.some(c => /продаж|продати|sell/i.test(c)));
+        if (headerIndex < 0) continue;
+        const header = rows[headerIndex];
+        const buyIndex = header.findIndex(c => /купівл|купити|buy/i.test(c));
+        const sellIndex = header.findIndex(c => /продаж|продати|sell/i.test(c));
+        const codeIndex = header.findIndex(c => /код|code/i.test(c));
+        const currencyIndex = header.findIndex(c => /валют|currency|пара/i.test(c));
+        if (buyIndex < 0 || sellIndex < 0) continue;
+        for (const cells of rows.slice(headerIndex + 1)) {
+            if (cells.length <= Math.max(buyIndex, sellIndex)) continue;
+            let cc = null;
+            if (codeIndex >= 0 && codeIndex < cells.length) cc = codeFor(cells[codeIndex]);
+            if (!cc && currencyIndex >= 0 && currencyIndex < cells.length) cc = codeFor(cells[currencyIndex]);
+            if (!cc) cc = cells.slice(0, Math.min(2, cells.length)).map(codeFor).find(Boolean) || null;
+            if (!cc || out[cc] || !BANK_CURRENCIES.includes(cc)) continue;
+            const buy = amount(cells[buyIndex], anchors[cc]);
+            const sell = amount(cells[sellIndex], anchors[cc]);
+            if (buy == null || sell == null || buy > sell || (sell - buy) / buy > 0.12) continue;
+            out[cc] = { buy, sell };
+        }
+    }
+    const pairs = Object.values(out);
+    if (new Set(pairs.map(p => `${p.buy}/${p.sell}`)).size !== pairs.length) return null;
+    return pairs.length ? out : null;
+}
+
 // Банківські дані отримуємо винятково з оприлюднених джерел самих банків.
 // Витягаємо пари курсів лише із компактних рядків із кодом валюти;
 // не виводимо курс банку з курсу НБУ або випадкових чисел на сторінці.
@@ -301,11 +352,11 @@ function parseDedicatedBankHtml(id, html, anchors, isPlain = false) {
 }
 
 function publishedBankDate(id, html) {
-    if (id !== 'polikom' && id !== 'komin') return null;
+    if (id !== 'polikom' && id !== 'komin' && id !== 'oschad') return null;
     const plain = stripHtmlTags(html);
     const re = id === 'polikom'
         ? /Курс\s+валют\s+для\s+готівкових\s+операцій\s+від\s+(\d{2})\.(\d{2})\.(\d{4})/i
-        : /Курс\s+валют\s+(\d{2})\.(\d{2})\.(\d{4})/i;
+        : /Курс\s+валют[\s\S]{0,100}?(\d{2})\.(\d{2})\.(\d{4})/i;
     const m = plain.match(re);
     if (!m) return null;
     const year = Number(m[3]), month = Number(m[2]), day = Number(m[1]);
@@ -315,8 +366,13 @@ function publishedBankDate(id, html) {
 }
 
 function bankPageRates(id, html, anchors, isPlain = false) {
-    return parseDedicatedBankHtml(id, html, anchors, isPlain)
-        || parseOfficialBankHtml(html, anchors, isPlain);
+    const dedicated = parseDedicatedBankHtml(id, html, anchors, isPlain);
+    if (dedicated) return dedicated;
+    const table = isPlain ? null : parseBankTablesWithHeaders(html, anchors);
+    // На сторінках цих банків є також таблиці курсу НБУ, які не можна
+    // сприймати за банківську купівлю/продаж. Вимагаємо явні заголовки.
+    if (id === 'oschad' || id === 'pumb') return table;
+    return table || parseOfficialBankHtml(html, anchors, isPlain);
 }
 
 async function runParallel(items, parallelism, fn) {
@@ -334,6 +390,7 @@ async function saveOfficialBanks() {
     const anchors = await getNbuAnchors();
     const pendingPlaywright = [];
     const statuses = {};
+    const restrictedUrls = new Map();
     let saved = 0;
     const filter = (process.env.NBU_BANK_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
     const selected = filter.length ? OFFICIAL_BANK_SOURCES.filter(b => filter.includes(b.id)) : OFFICIAL_BANK_SOURCES;
@@ -363,20 +420,29 @@ async function saveOfficialBanks() {
     // Швидкі HTTP-запити виконуємо паралельно, але з обмеженням навантаження.
     await runParallel(selected, 4, async bank => {
         let error = 'Не знайдено перевірених курсів у HTML';
-        let forbidden = false;
+        let hadAccessiblePage = false;
+        let hadForbiddenPage = false;
+        const pageErrors = [];
         for (const url of bank.urls) {
             try {
                 const html = await fetchText(url, 12000);
+                hadAccessiblePage = true;
                 const parsed = bankPageRates(bank.id, html, anchors);
                 if (parsed && await persist(bank, parsed, url, 'html', html)) return;
             } catch (e) {
-                error = `${url}: ${e.message}`;
-                if (/HTTP 403|HTTP 401/.test(e.message)) forbidden = true;
+                pageErrors.push(`${url}: ${e.message}`);
+                if (/HTTP 403|HTTP 401/.test(e.message)) {
+                    hadForbiddenPage = true;
+                    if (!restrictedUrls.has(bank.id)) restrictedUrls.set(bank.id, new Set());
+                    restrictedUrls.get(bank.id).add(url);
+                }
             }
         }
+        error = hadAccessiblePage ? 'Сторінку завантажено, але курси не розпізнані' : (pageErrors.join('; ') || error);
         statuses[bank.id] = { status: 'not_updated', reason: statuses[bank.id]?.reason || error };
-        // Не намагаємося обійти явно заборонений доступ 401/403.
-        if (!forbidden) pendingPlaywright.push(bank);
+        // Chromium застосовуємо лише до доступних HTTP-сторінок, що потребують JavaScript.
+        // Не обходимо блокування 401/403.
+        if (hadAccessiblePage || !hadForbiddenPage) pendingPlaywright.push(bank);
         else console.log(`bank    : ${bank.id} → ${error}, старий JSON збережено`);
     });
 
@@ -395,6 +461,7 @@ async function saveOfficialBanks() {
                     let error = 'Не знайдено перевірених курсів після JavaScript';
                     try {
                         for (const url of bank.urls) {
+                            if (restrictedUrls.get(bank.id)?.has(url)) continue;
                             try {
                                 const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 16000 });
                                 if (!response || response.status() >= 400) {
@@ -408,7 +475,7 @@ async function saveOfficialBanks() {
                                 if (parsed && await persist(bank, parsed, url, 'browser', html)) return;
                             } catch (e) { error = `${url}: ${e.message}`; }
                         }
-                        statuses[bank.id] = { status: 'not_updated', reason: statuses[bank.id]?.reason || error };
+                        statuses[bank.id] = { status: 'not_updated', reason: error };
                     } finally { await page.close(); }
                 });
             } finally { await browser.close(); }
