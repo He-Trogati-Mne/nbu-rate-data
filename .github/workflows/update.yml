@@ -1,42 +1,170 @@
-name: NBU Rate quick data refresh
+
+name: NBU Rate — оновлення даних
+
 on:
   schedule:
-    # UTC; deliberately off minute 00 to reduce GitHub's high-load queue delays.
     - cron: '13,43 * * * *'
+
+  # Ручний запуск через GitHub Actions
   workflow_dispatch:
+
 permissions:
   contents: write
+
 concurrency:
   group: nbu-data-writer
   cancel-in-progress: false
+
 jobs:
   update:
+    name: Оновлення бази даних
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 90
+
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-      - uses: actions/setup-node@v4
+      - name: Завантажити репозиторій
+        uses: actions/checkout@v4
+
+      - name: Налаштувати Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Fetch NBU, PrivatBank, Monobank and crypto (fast)
+
+      # Основні валютні курси
+      - name: Оновити НБУ, ПриватБанк, Monobank і криптовалюти
         run: node scripts/fetch-core.mjs
-      - name: Refresh stock prices and daily history (best effort)
+
+      # Акції та історія котирувань
+      - name: Оновити акції та історію
         run: node scripts/fetch-stocks.mjs
-      - name: Check whether problematic banks are stale
-        run: node scripts/bank-health.mjs
-      - name: Commit only changed data
+
+      # Шість проблемних банків
+      - name: Оновити шість банків вручну
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/fetch-selected-banks.mjs
+
+      # Решта банків (без використання Мінфіну)
+      - name: Оновити решту банків
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          if [ ! -f scripts/fetch.js ]; then
+            echo "::warning::Файл fetch.js не знайдено"
+
+          elif grep -Eiq 'minfin|мінфін' scripts/fetch.js; then
+            echo "::warning::У fetch.js знайдено Мінфін. Збір пропущено."
+
+          else
+            npm install --no-save --no-package-lock playwright
+            npx playwright install --with-deps chromium
+            node scripts/fetch.js
+          fi
+
+      # Перевірка актуальності
+      - name: Перевірити актуальність банківських курсів
+        if: always()
+        run: node scripts/bank-health.mjs
+
+      # Підсумковий звіт
+      - name: Створити звіт про оновлення
+        if: always()
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const data = file => {
+            try {
+              return JSON.parse(
+                fs.readFileSync('data/' + file, 'utf8')
+              );
+            } catch {
+              return null;
+            }
+          };
+
+          const core = data('core-status.json');
+          const stocks = data('stocks-status.json');
+          const banks = data('selected-bank-status.json');
+
+          const lines = [
+            '## Звіт NBU Rate',
+            '',
+            `- Основні дані: ${
+              core
+                ? `${core.ok ?? '?'} успішних, ${
+                    (core.failures || []).length
+                  } помилок`
+                : 'звіт відсутній'
+            }`,
+            `- Акції: ${
+              stocks
+                ? `${stocks.updated ?? 0}/${stocks.total ?? '?'} оновлено`
+                : 'звіт відсутній'
+            }`,
+            `- Банки: ${
+              banks && process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
+                ? `${banks.refreshed ?? 0}/${banks.total ?? 6} оновлено`
+                : 'перевірка не виконувалася'
+            }`
+          ];
+
+          if (
+            banks?.errors &&
+            process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
+          ) {
+            lines.push('', '### Помилки банків');
+
+            for (const [bank, error] of Object.entries(banks.errors)) {
+              lines.push(`- ⚠️ ${bank}: ${error}`);
+            }
+          }
+
+          const report = lines.join('\n') + '\n';
+
+          fs.appendFileSync(
+            process.env.GITHUB_STEP_SUMMARY,
+            report
+          );
+
+          console.log(report);
+
+          if (
+            process.env.GITHUB_EVENT_NAME === 'workflow_dispatch' &&
+            banks &&
+            banks.refreshed < banks.total
+          ) {
+            console.log(
+              `::warning::Оновлено ${
+                banks.refreshed
+              } із ${banks.total} банків`
+            );
+          }
+          NODE
+
+      # Збереження JSON у GitHub
+      - name: Зберегти оновлені дані
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add data/
+
           if git diff --cached --quiet; then
-            echo 'No changes'
+            echo "Нових змін немає"
             exit 0
           fi
-          git commit -m "data: quick update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          git commit -m "data: оновлення $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
           git pull --rebase origin main
           git push origin HEAD:main
+
+          echo "Дані успішно збережено в GitHub"
