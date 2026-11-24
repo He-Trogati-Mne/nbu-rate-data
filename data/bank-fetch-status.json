@@ -1,0 +1,391 @@
+{
+  "checkedAt": "2026-11-24T22:49:13.167Z",
+  "runId": "45504131212",
+  "updated": 17,
+  "refreshed": 17,
+  "total": 48,
+  "notUpdated": 31,
+  "banks": {
+    "raif": {
+      "status": "not_updated",
+      "reason": "https://raiffeisen.ua/currency: HTTP 403",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "pumb": {
+      "status": "not_updated",
+      "reason": "https://www.pumb.ua/purchase_currency: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:33:33.031Z",
+      "previousSource": "https://about.pumb.ua/info/currency_converter"
+    },
+    "oschad": {
+      "status": "updated",
+      "source": "https://www.oschadbank.ua/currency-rate",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "ukrsib": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T22:33:58.624Z",
+      "previousSource": "ukrsibbank.com"
+    },
+    "pivdenny": {
+      "status": "not_updated",
+      "reason": "https://bank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-23T21:40:20.117Z",
+      "previousSource": "bank.com.ua"
+    },
+    "sense": {
+      "status": "not_updated",
+      "reason": "https://sensebank.com.ua/currency-exchange: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:34:02.800Z",
+      "previousSource": "sensebank.com.ua"
+    },
+    "ukrgas": {
+      "status": "updated",
+      "source": "https://www.ukrgasbank.com/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "credit-agricole": {
+      "status": "updated",
+      "source": "https://credit-agricole.ua/kurs-valyut",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "lviv": {
+      "status": "not_updated",
+      "reason": "https://www.banklviv.com/: HTTP 403",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "a-bank": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-22T08:41:37.645Z",
+      "previousSource": "minfin.com.ua"
+    },
+    "ukrexim": {
+      "status": "updated",
+      "source": "https://www.eximb.com/ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ]
+    },
+    "globus": {
+      "status": "updated",
+      "source": "https://globusbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ]
+    },
+    "otp": {
+      "status": "updated",
+      "source": "https://www.otpbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "tas": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T22:37:42.054Z",
+      "previousSource": "tascombank.ua"
+    },
+    "kredo": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T22:34:28.792Z",
+      "previousSource": "kredobank.com.ua"
+    },
+    "idea": {
+      "status": "not_updated",
+      "reason": "https://ideabank.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    },
+    "pravex": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "poltava": {
+      "status": "updated",
+      "source": "https://poltavabank.com/",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR",
+        "PLN"
+      ]
+    },
+    "piraeus": {
+      "status": "updated",
+      "source": "https://www.piraeusbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "alliance": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    },
+    "ukrcapital": {
+      "status": "updated",
+      "source": "https://www.ukrcapital.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP",
+        "PLN"
+      ]
+    },
+    "polikom": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-22T08:41:37.647Z",
+      "previousSource": "minfin.com.ua"
+    },
+    "bank34": {
+      "status": "updated",
+      "source": "https://bank34.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ]
+    },
+    "industrial": {
+      "status": "not_updated",
+      "reason": "https://industrialbank.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:38:50.101Z",
+      "previousSource": "industrialbank.ua"
+    },
+    "grant": {
+      "status": "updated",
+      "source": "https://www.grant.ua/",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "asvio": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    },
+    "vostok": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T22:38:59.440Z",
+      "previousSource": "bankvostok.com.ua"
+    },
+    "mtb": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T22:36:15.532Z",
+      "previousSource": "mtb.ua"
+    },
+    "radabank": {
+      "status": "updated",
+      "source": "https://www.radabank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "PLN"
+      ]
+    },
+    "accord": {
+      "status": "updated",
+      "source": "https://accordbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "credit-dnipro": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "procredit": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T22:39:08.698Z",
+      "previousSource": "www.procreditbank.com.ua"
+    },
+    "unex": {
+      "status": "updated",
+      "source": "https://unexbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "universal": {
+      "status": "not_updated",
+      "reason": "https://www.universalbank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:39:14.106Z",
+      "previousSource": "www.universalbank.com.ua"
+    },
+    "altbank": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T22:36:31.070Z",
+      "previousSource": "altbank.ua"
+    },
+    "mib": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-24T16:54:33.464Z",
+      "previousSource": "www.ii-bank.com.ua"
+    },
+    "avangard": {
+      "status": "not_updated",
+      "reason": "https://avgd.ua/: HTTP 403",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "bizbank": {
+      "status": "not_updated",
+      "reason": "https://www.bisbank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:36:51.914Z",
+      "previousSource": "www.bisbank.com.ua"
+    },
+    "agroprosperis": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "oksi": {
+      "status": "not_updated",
+      "reason": "https://www.oxibank.ua/: page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.oxibank.ua/\nCall log:\n  - navigating to \"https://www.oxibank.ua/\", waiting until \"domcontentloaded\"\n",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "family": {
+      "status": "not_updated",
+      "reason": "https://www.fbank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:36:55.923Z",
+      "previousSource": "www.fbank.com.ua"
+    },
+    "trust-capital": {
+      "status": "not_updated",
+      "reason": "https://www.tc-bank.com/: HTTP 403",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "clearing": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "metabank": {
+      "status": "updated",
+      "source": "https://www.mbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "krystal": {
+      "status": "updated",
+      "source": "https://crystalbank.com.ua/",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR"
+      ]
+    },
+    "sky": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": null,
+      "previousSource": null
+    },
+    "pinbank": {
+      "status": "updated",
+      "source": "https://www.pinbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "PLN"
+      ]
+    },
+    "komin": {
+      "status": "not_updated",
+      "reason": "https://cib.com.ua/uk/private: page.goto: Timeout 16000ms exceeded.\nCall log:\n  - navigating to \"https://cib.com.ua/uk/private\", waiting until \"domcontentloaded\"\n",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    }
+  },
+  "errors": {
+    "raif": "https://raiffeisen.ua/currency: HTTP 403",
+    "pumb": "https://www.pumb.ua/purchase_currency: HTTP 403",
+    "ukrsib": "Не знайдено перевірених курсів після JavaScript",
+    "pivdenny": "https://bank.com.ua/: HTTP 403",
+    "sense": "https://sensebank.com.ua/currency-exchange: HTTP 403",
+    "lviv": "https://www.banklviv.com/: HTTP 403",
+    "a-bank": "Не знайдено перевірених курсів після JavaScript",
+    "tas": "Не знайдено перевірених курсів після JavaScript",
+    "kredo": "Не знайдено перевірених курсів після JavaScript",
+    "idea": "https://ideabank.ua/: HTTP 403",
+    "pravex": "Не знайдено перевірених курсів після JavaScript",
+    "alliance": "Не знайдено перевірених курсів після JavaScript",
+    "polikom": "Не знайдено перевірених курсів після JavaScript",
+    "industrial": "https://industrialbank.ua/: HTTP 403",
+    "asvio": "Не знайдено перевірених курсів після JavaScript",
+    "vostok": "Не знайдено перевірених курсів після JavaScript",
+    "mtb": "Не знайдено перевірених курсів після JavaScript",
+    "credit-dnipro": "Не знайдено перевірених курсів після JavaScript",
+    "procredit": "Не знайдено перевірених курсів після JavaScript",
+    "universal": "https://www.universalbank.com.ua/: HTTP 403",
+    "altbank": "Не знайдено перевірених курсів після JavaScript",
+    "mib": "Не знайдено перевірених курсів після JavaScript",
+    "avangard": "https://avgd.ua/: HTTP 403",
+    "bizbank": "https://www.bisbank.com.ua/: HTTP 403",
+    "agroprosperis": "Не знайдено перевірених курсів після JavaScript",
+    "oksi": "https://www.oxibank.ua/: page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.oxibank.ua/\nCall log:\n  - navigating to \"https://www.oxibank.ua/\", waiting until \"domcontentloaded\"\n",
+    "family": "https://www.fbank.com.ua/: HTTP 403",
+    "trust-capital": "https://www.tc-bank.com/: HTTP 403",
+    "clearing": "Не знайдено перевірених курсів після JavaScript",
+    "sky": "Не знайдено перевірених курсів після JavaScript",
+    "komin": "https://cib.com.ua/uk/private: page.goto: Timeout 16000ms exceeded.\nCall log:\n  - navigating to \"https://cib.com.ua/uk/private\", waiting until \"domcontentloaded\"\n"
+  },
+  "note": "Жодні попередні JSON не видаляються та не отримуються зі сторонніх агрегаторів."
+}
