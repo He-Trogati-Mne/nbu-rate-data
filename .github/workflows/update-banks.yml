@@ -1,0 +1,52 @@
+name: NBU Rate bank refresh and historical backfill
+on:
+  schedule:
+    - cron: '29 * * * *'       # Target six banks hourly, UTC
+    - cron: '47 2 * * *'       # Thorough original bank crawler and deep history, daily UTC
+  workflow_dispatch:
+    inputs:
+      deep:
+        description: 'Run full original crawler / history backfill'
+        required: false
+        default: false
+        type: boolean
+permissions:
+  contents: write
+concurrency:
+  group: nbu-data-writer
+  cancel-in-progress: false
+jobs:
+  banks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Refresh 6 problematic banks with careful validation
+        run: node scripts/fetch-selected-banks.mjs
+      - name: Install Chromium for full crawler (only daily/manual)
+        if: github.event.schedule == '47 2 * * *' || inputs.deep == true
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install --with-deps chromium
+      - name: Full official-bank crawler plus NBU and crypto historical data
+        if: github.event.schedule == '47 2 * * *' || inputs.deep == true
+        run: node scripts/fetch.js
+      - name: Produce bank stale-data health status
+        run: node scripts/bank-health.mjs
+      - name: Commit data safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/
+          if git diff --cached --quiet; then
+            echo 'No data changes'
+            exit 0
+          fi
+          git commit -m "data: bank check $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git pull --rebase origin main
+          git push origin HEAD:main
