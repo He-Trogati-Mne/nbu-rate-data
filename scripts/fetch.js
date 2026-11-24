@@ -101,7 +101,7 @@ const OFFICIAL_BANK_SOURCES = [
     { id: 'sense',           urls: ['https://sensebank.com.ua/currency-exchange'] },
     { id: 'ukrgas',          urls: ['https://www.ukrgasbank.com/'] },
     { id: 'ukrexim',         urls: ['https://www.eximb.com/ua/business/pryvatnym-klientam/pryvatnym-klientam-inshi-poslugy/obmin-valyut/kursy-valyut/', 'https://www.eximb.com/ua/'] },
-    { id: 'pivdenny',        urls: ['https://bank.com.ua/'] },
+    { id: 'pivdenny',        urls: ['https://bank.com.ua/currency-metals-rates', 'https://bank.com.ua/'] },
     { id: 'credit-agricole', urls: ['https://credit-agricole.ua/kurs-valyut', 'https://credit-agricole.ua/'] },
     { id: 'globus',          urls: ['https://globusbank.com.ua/ua/kurs-valyut.html', 'https://globusbank.com.ua/'] },
     { id: 'lviv',            urls: ['https://www.banklviv.com/'] },
@@ -112,10 +112,10 @@ const OFFICIAL_BANK_SOURCES = [
     { id: 'tas',             urls: ['https://tascombank.ua/'] },
     { id: 'piraeus',         urls: ['https://www.piraeusbank.ua/', 'https://www.piraeusbank.ua/ua/kursy-valyut-dlya-operatsiy-iz-platizhnymy-kartkamy'] },
     { id: 'idea',            urls: ['https://ideabank.ua/uk', 'https://ideabank.ua/'] },
-    { id: 'komin',           urls: ['https://cib.com.ua/uk', 'https://cib.com.ua/uk/private'] },
+    { id: 'komin',           urls: ['https://cib.com.ua/uk', 'https://cib.com.ua/uk/private', 'https://cib.com.ua/uk/about/page/informaciya-pro-bank'] },
     { id: 'alliance',        urls: ['https://alb.ua/currency'] },
     { id: 'poltava',         urls: ['https://poltavabank.com/'] },
-    { id: 'polikom',         urls: ['https://www.policombank.com/'] },
+    { id: 'polikom',         urls: ['https://www.policombank.com/kurs-valjut', 'https://www.policombank.com/'] },
     { id: 'ukrcapital',      urls: ['https://www.ukrcapital.com.ua/'] },
     { id: 'krystal',         urls: ['https://crystalbank.com.ua/', 'https://crystalbank.com.ua/currency'] },
     { id: 'bank34',          urls: ['https://bank34.ua/'] },
@@ -131,7 +131,7 @@ const OFFICIAL_BANK_SOURCES = [
     { id: 'unex',            urls: ['https://unexbank.ua/'] },
     { id: 'altbank',         urls: ['https://altbank.ua/'] },
     { id: 'universal',       urls: ['https://www.universalbank.com.ua/'] },
-    { id: 'mib',             urls: ['https://www.ii-bank.com.ua/'] },
+    { id: 'mib',             urls: ['https://ii-bank.com.ua/uk/private-clients/rates', 'https://www.ii-bank.com.ua/'] },
     { id: 'agroprosperis',   urls: ['https://ap-bank.com/'] },
     { id: 'avangard',        urls: ['https://avgd.ua/'] },
     { id: 'bizbank',         urls: ['https://www.bisbank.com.ua/'] },
@@ -270,6 +270,55 @@ function parseOfficialBankHtml(html, anchors, isPlain = false) {
     return Object.keys(out).length > 0 ? out : null;
 }
 
+// Окремий консервативний парсер для офіційних таблиць Полікомбанку й КОМІНБАНКУ.
+// Визначаємо лише готівкові курси — не змішуємо з картковими чи курсом НБУ.
+function parseDedicatedBankHtml(id, html, anchors, isPlain = false) {
+    if (id !== 'polikom' && id !== 'komin') return null;
+    const plain = isPlain ? html.replace(/\s+/g, ' ').trim() : stripHtmlTags(html);
+    let section = '';
+    if (id === 'polikom') {
+        const pos = plain.search(/Курс\s+валют\s+для\s+готівкових\s+операцій/i);
+        if (pos < 0) return null;
+        section = plain.slice(pos, pos + 1200).split(/Курс\s+валют\s+для\s+карткових\s+операцій/i)[0];
+    } else {
+        const pos = plain.search(/Курси\s+купівлі[-–]?продажу\s+готівкової\s+іноземної\s+валюти/i);
+        if (pos < 0) return null;
+        section = plain.slice(pos, pos + 1250).split(/Валютообмін\s+On[- ]?line/i)[0];
+    }
+    // Важливо: лише пари, що стоять безпосередньо після коду валюти в таблиці.
+    const out = {};
+    const re = /(?:^|\s)(USD|EUR|EURO|GBP|PLN)\s+(\d{1,3}(?:[.,]\d{1,5})?)\s*(?:\/\s*|\s+)(\d{1,3}(?:[.,]\d{1,5})?)(?=\s|$)/gi;
+    let match;
+    while ((match = re.exec(section))) {
+        const cc = match[1].toUpperCase() === 'EURO' ? 'EUR' : match[1].toUpperCase();
+        const buy = normalizeRateValue(Number(match[2].replace(',', '.')), anchors[cc]);
+        const sell = normalizeRateValue(Number(match[3].replace(',', '.')), anchors[cc]);
+        if (buy != null && sell != null && buy <= sell && (sell - buy) / buy <= 0.12) {
+            out[cc] = { buy, sell };
+        }
+    }
+    return Object.keys(out).length ? out : null;
+}
+
+function publishedBankDate(id, html) {
+    if (id !== 'polikom' && id !== 'komin') return null;
+    const plain = stripHtmlTags(html);
+    const re = id === 'polikom'
+        ? /Курс\s+валют\s+для\s+готівкових\s+операцій\s+від\s+(\d{2})\.(\d{2})\.(\d{4})/i
+        : /Курс\s+валют\s+(\d{2})\.(\d{2})\.(\d{4})/i;
+    const m = plain.match(re);
+    if (!m) return null;
+    const year = Number(m[3]), month = Number(m[2]), day = Number(m[1]);
+    const d = new Date(Date.UTC(year, month - 1, day));
+    if (d.getUTCFullYear() !== year || d.getUTCMonth() + 1 !== month || d.getUTCDate() !== day) return null;
+    return d.toISOString().slice(0, 10);
+}
+
+function bankPageRates(id, html, anchors, isPlain = false) {
+    return parseDedicatedBankHtml(id, html, anchors, isPlain)
+        || parseOfficialBankHtml(html, anchors, isPlain);
+}
+
 async function runParallel(items, parallelism, fn) {
     let cursor = 0;
     const workers = Array.from({ length: Math.min(parallelism, items.length) }, async () => {
@@ -291,12 +340,24 @@ async function saveOfficialBanks() {
     const statusFile = process.env.NBU_BANK_STATUS_FILE || 'bank-fetch-status.json';
     console.log(`banks   : перевіряємо ${selected.length} банків, тільки офіційні сайти`);
 
-    const persist = async (bank, result, url, via) => {
+    const persist = async (bank, result, url, via, html) => {
+        // Для банків з датованими офіційними таблицями не робимо старий курс «новим».
+        const rateDate = publishedBankDate(bank.id, html);
+        if (rateDate) {
+            const ageDays = Math.floor((Date.now() - new Date(rateDate + 'T00:00:00Z').getTime()) / 86400000);
+            if (ageDays > 4 || ageDays < -1) {
+                const reason = `Офіційна таблиця за ${rateDate} (вік ${ageDays} днів), поточних курсів немає`;
+                statuses[bank.id] = { status: 'not_updated', reason, source: url, rateDate };
+                console.log(`bank    : ${bank.id} → ${reason}; старий JSON збережено`);
+                return false;
+            }
+        }
         // Наявні назви файлів та схема {updatedAt, source, data} збережені.
-        await writeJson(bank.id, result, { source: new URL(url).hostname, via });
-        statuses[bank.id] = { status: 'updated', source: url, via, currencies: Object.keys(result) };
+        await writeJson(bank.id, result, { source: new URL(url).hostname, via, ...(rateDate ? { rateDate } : {}) });
+        statuses[bank.id] = { status: 'updated', source: url, via, currencies: Object.keys(result), rateDate };
         saved++;
-        console.log(`bank    : ${bank.id} → ${Object.keys(result).join(', ')} [${via}]`);
+        console.log(`bank    : ${bank.id} → ${Object.keys(result).join(', ')} [${via}]${rateDate ? ' курс за '+rateDate : ''}`);
+        return true;
     };
 
     // Швидкі HTTP-запити виконуємо паралельно, але з обмеженням навантаження.
@@ -306,14 +367,14 @@ async function saveOfficialBanks() {
         for (const url of bank.urls) {
             try {
                 const html = await fetchText(url, 12000);
-                const parsed = parseOfficialBankHtml(html, anchors);
-                if (parsed) { await persist(bank, parsed, url, 'html'); return; }
+                const parsed = bankPageRates(bank.id, html, anchors);
+                if (parsed && await persist(bank, parsed, url, 'html', html)) return;
             } catch (e) {
                 error = `${url}: ${e.message}`;
                 if (/HTTP 403|HTTP 401/.test(e.message)) forbidden = true;
             }
         }
-        statuses[bank.id] = { status: 'not_updated', reason: error };
+        statuses[bank.id] = { status: 'not_updated', reason: statuses[bank.id]?.reason || error };
         // Не намагаємося обійти явно заборонений доступ 401/403.
         if (!forbidden) pendingPlaywright.push(bank);
         else console.log(`bank    : ${bank.id} → ${error}, старий JSON збережено`);
@@ -343,11 +404,11 @@ async function saveOfficialBanks() {
                                 await page.waitForTimeout(1200);
                                 const text = await page.locator('body').innerText({ timeout: 5000 });
                                 const html = await page.content();
-                                const parsed = parseOfficialBankHtml(html, anchors) || parseOfficialBankHtml(text, anchors, true);
-                                if (parsed) { await persist(bank, parsed, url, 'browser'); return; }
+                                const parsed = bankPageRates(bank.id, html, anchors) || bankPageRates(bank.id, text, anchors, true);
+                                if (parsed && await persist(bank, parsed, url, 'browser', html)) return;
                             } catch (e) { error = `${url}: ${e.message}`; }
                         }
-                        statuses[bank.id] = { status: 'not_updated', reason: error };
+                        statuses[bank.id] = { status: 'not_updated', reason: statuses[bank.id]?.reason || error };
                     } finally { await page.close(); }
                 });
             } finally { await browser.close(); }
