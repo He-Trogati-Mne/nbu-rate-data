@@ -92,11 +92,10 @@ async function saveMono() {
 /* ─────────────── Official Bank Websites (with proxy + Chromium bypass) ─────────────── */
 
 const BANK_CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN'];
-const WORKER_PROXY = 'https://nbu-rate.nightmod.workers.dev/?url=';
 
 const OFFICIAL_BANK_SOURCES = [
     { id: 'oschad',          urls: ['https://www.oschadbank.ua/currency-rate'] },
-    { id: 'pumb',            urls: ['https://www.pumb.ua/info/commercial-rate', 'https://www.pumb.ua/info/currency_exchange', 'https://www.pumb.ua/'] },
+    { id: 'pumb',            urls: ['https://www.pumb.ua/purchase_currency'] },
     { id: 'raif',            urls: ['https://raiffeisen.ua/currency'] },
     { id: 'ukrsib',          urls: ['https://ukrsibbank.com/currency-cash/'] },
     { id: 'sense',           urls: ['https://sensebank.com.ua/currency-exchange'] },
@@ -112,9 +111,9 @@ const OFFICIAL_BANK_SOURCES = [
     { id: 'pravex',          urls: ['https://www.pravex.com.ua/kursy-valyut', 'https://www.pravex.com.ua/'] },
     { id: 'tas',             urls: ['https://tascombank.ua/'] },
     { id: 'piraeus',         urls: ['https://www.piraeusbank.ua/', 'https://www.piraeusbank.ua/ua/kursy-valyut-dlya-operatsiy-iz-platizhnymy-kartkamy'] },
-    { id: 'idea',            urls: ['https://ideabank.ua/', 'https://ideabank.ua/uk/currency-rates'] },
-    { id: 'komin',           urls: ['https://cib.com.ua/', 'https://cib.com.ua/currency-converter'] },
-    { id: 'alliance',        urls: ['https://bankalliance.ua/'] },
+    { id: 'idea',            urls: ['https://ideabank.ua/uk', 'https://ideabank.ua/'] },
+    { id: 'komin',           urls: ['https://cib.com.ua/uk', 'https://cib.com.ua/uk/private'] },
+    { id: 'alliance',        urls: ['https://alb.ua/currency'] },
     { id: 'poltava',         urls: ['https://poltavabank.com/'] },
     { id: 'polikom',         urls: ['https://www.policombank.com/'] },
     { id: 'ukrcapital',      urls: ['https://www.ukrcapital.com.ua/'] },
@@ -220,150 +219,162 @@ function parseSplitBuySell(plainText, anchors) {
     return out;
 }
 
+// Банківські дані отримуємо винятково з оприлюднених джерел самих банків.
+// Витягаємо пари курсів лише із компактних рядків із кодом валюти;
+// не виводимо курс банку з курсу НБУ або випадкових чисел на сторінці.
 function parseOfficialBankHtml(html, anchors, isPlain = false) {
-    const out = {};
-    const plainFull = isPlain ? html.replace(/\s+/g, ' ').trim() : stripHtmlTags(html);
-
-    const cardMatch = plainFull.match(/(?:для\s+карт|картков|for\s+cards|комерційний\s+курс|онлайн\s+у\s+winbank)[\s\S]{0,1800}/i);
-    const scopes = cardMatch ? [cardMatch[0], plainFull] : [plainFull];
-
-    // 1. Табличные строки <tr>
+    const currencies = BANK_CURRENCIES;
+    const clean = isPlain ? html.replace(/\s+/g, ' ').trim() : stripHtmlTags(html);
+    const rows = [];
     if (!isPlain) {
-        const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
-        for (const row of rows) {
-            const rowText = stripHtmlTags(row);
-            for (const cc of BANK_CURRENCIES) {
-                if (out[cc]) continue;
-                const re = new RegExp(`\\b${cc}\\b(?!\\s*[\\/-]\\s*(?:USD|EUR|GBP|PLN))`, 'i');
-                if (!re.test(rowText)) continue;
-                const pair = extractCurrencyFromFragment(rowText, anchors[cc]);
-                if (pair) out[cc] = pair;
-            }
+        for (const match of html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)) {
+            const cells = Array.from(match[0].matchAll(/<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi), m => stripHtmlTags(m[1]));
+            if (cells.length >= 3) rows.push(cells);
         }
     }
-
-    // 2. Карточный / блочный текст рядом с кодом валюты
-    for (const scope of scopes) {
-        for (const cc of BANK_CURRENCIES) {
-            if (out[cc]) continue;
-            const re = new RegExp(`\\b${cc}\\b(?!\\s*[\\/-]\\s*(?:USD|EUR|GBP|PLN))`, 'gi');
-            let m;
-            while ((m = re.exec(scope)) !== null) {
-                const snippet = scope.slice(m.index, m.index + 160);
-                const pair = extractCurrencyFromFragment(snippet, anchors[cc]);
-                if (pair) {
-                    out[cc] = pair;
-                    break;
-                }
-            }
+    const out = {};
+    const numberPattern = /^\s*(\d{1,3}(?:[.,]\d{1,5})?)\s*$/;
+    const money = (raw, ref) => {
+        const m = String(raw || '').replace(/\s/g, '').match(numberPattern);
+        return m ? normalizeRateValue(Number(m[1].replace(',', '.')), ref) : null;
+    };
+    for (const cc of currencies) {
+        const ref = anchors[cc];
+        if (!(ref > 0)) continue;
+        for (const cells of rows) {
+            if (!new RegExp(`^${cc}(?:\\s|$)`, 'i').test(cells[0])) continue;
+            const b = money(cells[1], ref), s = money(cells[2], ref);
+            if (b == null || s == null) continue;
+            const buy = Math.min(b, s), sell = Math.max(b, s);
+            if ((sell - buy) / buy <= 0.12) { out[cc] = { buy, sell }; break; }
+        }
+        if (out[cc]) continue;
+        // Підтримка текстових блоків на кшталт «USD куп. 45.20 прод. 45.80».
+        const pattern = new RegExp(`\\b${cc}\\b\\s*(?:куп(?:івля)?\\.?\\s*)?(\\d{1,3}(?:[.,]\\d{1,5}))\\s*(?:\\/\\s*|прод(?:аж)?\\.?\\s*|)(\\d{1,3}(?:[.,]\\d{1,5}))`, 'gi');
+        let match;
+        while ((match = pattern.exec(clean))) {
+            const b = normalizeRateValue(Number(match[1].replace(',', '.')), ref);
+            const s = normalizeRateValue(Number(match[2].replace(',', '.')), ref);
+            if (b == null || s == null) continue;
+            const buy = Math.min(b, s), sell = Math.max(b, s);
+            if ((sell - buy) / buy <= 0.12) { out[cc] = { buy, sell }; break; }
         }
     }
-
-    // 3. Раздельный формат "Купівля: USD ... Продаж: USD ..."
-    if (!out.USD && !out.EUR) {
-        Object.assign(out, parseSplitBuySell(plainFull, anchors));
+    // Якщо різні валюти мають повністю однакові значення, це, найімовірніше,
+    // помилка розбору; не перезаписуємо достовірний попередній файл.
+    const pairs = Object.values(out);
+    if (pairs.length > 1) {
+        const unique = new Set(pairs.map(v => `${v.buy}/${v.sell}`));
+        if (unique.size !== pairs.length) return null;
     }
-
-    return Object.keys(out).length ? out : null;
+    return Object.keys(out).length > 0 ? out : null;
 }
 
-async function fetchViaWorker(url) {
-    const resText = await fetchText(`${WORKER_PROXY}${encodeURIComponent(url)}`, 15000);
-    return resText;
+async function runParallel(items, parallelism, fn) {
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(parallelism, items.length) }, async () => {
+        while (cursor < items.length) {
+            const item = items[cursor++];
+            await fn(item);
+        }
+    });
+    await Promise.all(workers);
 }
 
 async function saveOfficialBanks() {
     const anchors = await getNbuAnchors();
     const pendingPlaywright = [];
+    const statuses = {};
     let saved = 0;
+    const filter = (process.env.NBU_BANK_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
+    const selected = filter.length ? OFFICIAL_BANK_SOURCES.filter(b => filter.includes(b.id)) : OFFICIAL_BANK_SOURCES;
+    const statusFile = process.env.NBU_BANK_STATUS_FILE || 'bank-fetch-status.json';
+    console.log(`banks   : перевіряємо ${selected.length} банків, тільки офіційні сайти`);
 
-    // Уровень 1 и 2: быстрый fetch + резерв через Cloudflare Worker
-    for (const bank of OFFICIAL_BANK_SOURCES) {
-        let found = null;
-        let usedUrl = null;
+    const persist = async (bank, result, url, via) => {
+        // Наявні назви файлів та схема {updatedAt, source, data} збережені.
+        await writeJson(bank.id, result, { source: new URL(url).hostname, via });
+        statuses[bank.id] = { status: 'updated', source: url, via, currencies: Object.keys(result) };
+        saved++;
+        console.log(`bank    : ${bank.id} → ${Object.keys(result).join(', ')} [${via}]`);
+    };
 
+    // Швидкі HTTP-запити виконуємо паралельно, але з обмеженням навантаження.
+    await runParallel(selected, 4, async bank => {
+        let error = 'Не знайдено перевірених курсів у HTML';
+        let forbidden = false;
         for (const url of bank.urls) {
-            for (const attempt of [() => fetchText(url, 12000), () => fetchViaWorker(url)]) {
-                try {
-                    const html = await attempt();
-                    const parsed = parseOfficialBankHtml(html, anchors, false);
-                    if (parsed) {
-                        found = parsed;
-                        usedUrl = url;
-                        break;
-                    }
-                } catch {}
-            }
-            if (found) break;
-        }
-
-        if (found) {
-            await writeJson(bank.id, found, { source: new URL(usedUrl).hostname });
-            const summary = Object.entries(found).map(([c, v]) => `${c}:${v.buy}/${v.sell}`).join(' ');
-            console.log(`bank    : ${bank.id.padEnd(15)} → ${summary}`);
-            saved++;
-        } else {
-            pendingPlaywright.push(bank);
-        }
-        await new Promise(r => setTimeout(r, 200));
-    }
-
-    // Уровень 3: обход SPA/антиботов через реальный Chromium (если установлен playwright)
-    if (pendingPlaywright.length > 0) {
-        let chromium = null;
-        try {
-            const pw = await import('playwright');
-            chromium = pw.chromium;
-        } catch {}
-
-        if (chromium) {
-            console.log(`banks   : running Chromium bypass for ${pendingPlaywright.length} banks...`);
-            const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
             try {
-                const context = await browser.newContext({
-                    userAgent: BROWSER_HEADERS['User-Agent'],
-                    locale: 'uk-UA'
-                });
-                const page = await context.newPage();
+                const html = await fetchText(url, 12000);
+                const parsed = parseOfficialBankHtml(html, anchors);
+                if (parsed) { await persist(bank, parsed, url, 'html'); return; }
+            } catch (e) {
+                error = `${url}: ${e.message}`;
+                if (/HTTP 403|HTTP 401/.test(e.message)) forbidden = true;
+            }
+        }
+        statuses[bank.id] = { status: 'not_updated', reason: error };
+        // Не намагаємося обійти явно заборонений доступ 401/403.
+        if (!forbidden) pendingPlaywright.push(bank);
+        else console.log(`bank    : ${bank.id} → ${error}, старий JSON збережено`);
+    });
 
-                for (const bank of pendingPlaywright) {
-                    let found = null;
-                    let usedUrl = null;
-                    for (const url of bank.urls) {
-                        try {
-                            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-                            await page.waitForTimeout(2500);
-                            const text = await page.evaluate(() => document.body?.innerText || '');
-                            const parsed = parseOfficialBankHtml(text, anchors, true);
-                            if (parsed) {
-                                found = parsed;
-                                usedUrl = url;
-                                break;
-                            }
-                        } catch {}
-                    }
-                    if (found) {
-                        await writeJson(bank.id, found, { source: new URL(usedUrl).hostname, via: 'chromium' });
-                        const summary = Object.entries(found).map(([c, v]) => `${c}:${v.buy}/${v.sell}`).join(' ');
-                        console.log(`bank    : ${bank.id.padEnd(15)} → ${summary} [chromium]`);
-                        saved++;
-                    } else {
-                        const prev = await readJson(bank.id);
-                        console.log(`bank    : ${bank.id.padEnd(15)} → no data${prev ? ' (kept previous)' : ''}`);
-                    }
-                }
-            } finally {
-                await browser.close();
-            }
-        } else {
-            for (const bank of pendingPlaywright) {
-                const prev = await readJson(bank.id);
-                console.log(`bank    : ${bank.id.padEnd(15)} → skipped (install playwright for JS/CF bypass)${prev ? ' [kept previous]' : ''}`);
-            }
+    if (pendingPlaywright.length) {
+        let browser;
+        try {
+            const { chromium } = await import('playwright');
+            browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+        } catch (e) {
+            console.log(`banks   : Chromium недоступний (${e.message}); зберігаємо попередні JSON`);
+        }
+        if (browser) {
+            try {
+                await runParallel(pendingPlaywright, 3, async bank => {
+                    const page = await browser.newPage({ locale: 'uk-UA' });
+                    let error = 'Не знайдено перевірених курсів після JavaScript';
+                    try {
+                        for (const url of bank.urls) {
+                            try {
+                                const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 16000 });
+                                if (!response || response.status() >= 400) {
+                                    error = `${url}: HTTP ${response?.status() ?? 'unknown'}`;
+                                    continue;
+                                }
+                                await page.waitForTimeout(1200);
+                                const text = await page.locator('body').innerText({ timeout: 5000 });
+                                const html = await page.content();
+                                const parsed = parseOfficialBankHtml(html, anchors) || parseOfficialBankHtml(text, anchors, true);
+                                if (parsed) { await persist(bank, parsed, url, 'browser'); return; }
+                            } catch (e) { error = `${url}: ${e.message}`; }
+                        }
+                        statuses[bank.id] = { status: 'not_updated', reason: error };
+                    } finally { await page.close(); }
+                });
+            } finally { await browser.close(); }
         }
     }
 
-    console.log(`banks   : saved ${saved}/${OFFICIAL_BANK_SOURCES.length} official banks`);
+    for (const bank of selected) {
+        if (statuses[bank.id]?.status !== 'updated') {
+            const prev = await readJson(bank.id);
+            const status = statuses[bank.id] || { status: 'not_updated', reason: 'Немає доступних джерел' };
+            statuses[bank.id] = { ...status, previousUpdatedAt: prev?.updatedAt ?? null, previousSource: prev?.source ?? null };
+            console.log(`bank    : ${bank.id} → не оновлено; ${status.reason || 'немає курсу'}; старі дані збережено`);
+        }
+    }
+    const report = {
+        checkedAt: new Date().toISOString(),
+        runId: process.env.GITHUB_RUN_ID || null,
+        updated: saved,
+        refreshed: saved,
+        total: selected.length,
+        notUpdated: selected.length - saved,
+        banks: statuses,
+        errors: Object.fromEntries(Object.entries(statuses).filter(([,v]) => v.status !== 'updated').map(([id,v])=>[id,v.reason||'Немає перевірених курсів'])) ,
+        note: 'Жодні попередні JSON не видаляються та не отримуються зі сторонніх агрегаторів.'
+    };
+    await fs.writeFile(path.join(DATA_DIR, statusFile), JSON.stringify(report, null, 2) + '\n');
+    console.log(`banks   : офіційні джерела — ${saved}/${selected.length} оновлено; звіт data/${statusFile}`);
 }
 
 /* ─────────────── NBU history 2003 → now ─────────────── */
@@ -611,8 +622,8 @@ async function saveKuna() {
         }
     }
 
-    console.log('kuna    : all endpoints failed, writing error snapshot');
-    await writeJson('kuna', [], { error: 'all endpoints failed', attempts });
+    console.log('kuna    : усі адреси не відповіли, попередні дані залишено без змін');
+    await fs.writeFile(path.join(DATA_DIR, 'kuna-status.json'), JSON.stringify({checkedAt:new Date().toISOString(),status:'not_updated',attempts},null,2)+'\n');
 }
 
 /* ─────────────── Whitebit (backup) ─────────────── */
@@ -815,26 +826,38 @@ async function saveCrypto() {
 
 /* ─────────────── Run ─────────────── */
 
-console.log('Updating data...');
+const mode = process.env.NBU_FETCH_MODE || 'all';
+console.log(`Оновлення NBU Rate (режим: ${mode})`);
 
-const tasks = [
-    ['nbu',      saveNBU],
-    ['privat',   savePrivat],
-    ['mono',     saveMono],
-    ['kuna',     saveKuna],
-    ['whitebit', saveWhitebit],
-    ['liqpay',   saveLiqPay]
-];
-
-const results = await Promise.allSettled(tasks.map(([, fn]) => fn()));
-results.forEach((r, i) => {
-    if (r.status === 'rejected') {
-        console.error(`FAIL ${tasks[i][0]}: ${r.reason?.message}`);
+if (mode === 'banks') {
+    await saveOfficialBanks();
+} else if (mode === 'extras') {
+    const tasks = [
+        ['kuna', saveKuna],
+        ['whitebit', saveWhitebit],
+        ['liqpay', saveLiqPay],
+        ['nbu-history', saveNBUHistory]
+    ];
+    for (const [name, fn] of tasks) {
+        try { await fn(); } catch (e) { console.error(`ПОМИЛКА ${name}: ${e.message}`); }
     }
-});
-
-await saveOfficialBanks().catch(e => console.error('FAIL banks: ' + e.message));
-await saveNBUHistory().catch(e => console.error('FAIL nbu-history: ' + e.message));
-await saveCrypto().catch(e => console.error('FAIL crypto: ' + e.message));
-
-console.log('Done.');
+} else if (mode === 'all') {
+    const tasks = [
+        ['nbu', saveNBU],
+        ['privat', savePrivat],
+        ['mono', saveMono],
+        ['kuna', saveKuna],
+        ['whitebit', saveWhitebit],
+        ['liqpay', saveLiqPay]
+    ];
+    const results = await Promise.allSettled(tasks.map(([, fn]) => fn()));
+    results.forEach((r, i) => {
+        if (r.status === 'rejected') console.error(`ПОМИЛКА ${tasks[i][0]}: ${r.reason?.message}`);
+    });
+    await saveOfficialBanks().catch(e => console.error('ПОМИЛКА банки: ' + e.message));
+    await saveNBUHistory().catch(e => console.error('ПОМИЛКА історія НБУ: ' + e.message));
+    await saveCrypto().catch(e => console.error('ПОМИЛКА криптовалюти: ' + e.message));
+} else {
+    throw new Error(`Невідомий режим: ${mode}`);
+}
+console.log('Завершено.');
