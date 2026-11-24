@@ -96,24 +96,24 @@ const BANK_CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN'];
 const OFFICIAL_BANK_SOURCES = [
     { id: 'oschad',          urls: ['https://www.oschadbank.ua/msb/currency-rate', 'https://www.oschadbank.ua/currency-rate'] },
     { id: 'pumb',            urls: ['https://about.pumb.ua/', 'https://about.pumb.ua/info/currency_converter', 'https://www.pumb.ua/purchase_currency'] },
-    { id: 'raif',            urls: ['https://raiffeisen.ua/currency'] },
-    { id: 'ukrsib',          urls: ['https://ukrsibbank.com/currency-cash/'] },
-    { id: 'sense',           urls: ['https://sensebank.com.ua/currency-exchange'] },
+    { id: 'raif',            urls: ['https://raiffeisen.ua/currency', 'https://raiffeisen.ua/en/currency?show=1'] },
+    { id: 'ukrsib',          urls: ['https://ukrsibbank.com/currency-cash/', 'https://ukrsibbank.com/'] },
+    { id: 'sense',           urls: ['https://sensebank.ua/currency-exchange', 'https://sensebank.ua/'] },
     { id: 'ukrgas',          urls: ['https://www.ukrgasbank.com/'] },
     { id: 'ukrexim',         urls: ['https://www.eximb.com/ua/business/pryvatnym-klientam/pryvatnym-klientam-inshi-poslugy/obmin-valyut/kursy-valyut/', 'https://www.eximb.com/ua/'] },
-    { id: 'pivdenny',        urls: ['https://bank.com.ua/currency-metals-rates', 'https://front.bank.com.ua/currency-metals-rates', 'https://bank.com.ua/'] },
+    { id: 'pivdenny',        urls: ['https://bank.com.ua/currency-metals-rates', 'https://front.bank.com.ua/currency-metals-rates', 'https://front.bank.com.ua/', 'https://bank.com.ua/'] },
     { id: 'credit-agricole', urls: ['https://credit-agricole.ua/kurs-valyut', 'https://credit-agricole.ua/'] },
     { id: 'globus',          urls: ['https://globusbank.com.ua/ua/kurs-valyut.html', 'https://globusbank.com.ua/'] },
     { id: 'lviv',            urls: ['https://www.banklviv.com/'] },
-    { id: 'a-bank',          urls: ['https://a-bank.com.ua/'] },
-    { id: 'kredo',           urls: ['https://kredobank.com.ua/info/kursy-valyut/cards', 'https://kredobank.com.ua/info/kursy-valyut'] },
+    { id: 'a-bank',          urls: ['https://a-bank.com.ua/', 'https://a-bank.com.ua/?action=noAction'] },
+    { id: 'kredo',           urls: ['https://kredobank.com.ua/info/kursy-valyut/commercial', 'https://kredobank.com.ua/info/kursy-valyut/cards', 'https://kredobank.com.ua/info/kursy-valyut'] },
     { id: 'otp',             urls: ['https://www.otpbank.com.ua/privateclients/pay-cards/currency-converter-cards.php', 'https://www.otpbank.com.ua/'] },
     { id: 'pravex',          urls: ['https://www.pravex.com.ua/kursy-valyut', 'https://www.pravex.com.ua/'] },
     { id: 'tas',             urls: ['https://tascombank.ua/'] },
     { id: 'piraeus',         urls: ['https://www.piraeusbank.ua/', 'https://www.piraeusbank.ua/ua/kursy-valyut-dlya-operatsiy-iz-platizhnymy-kartkamy'] },
     { id: 'idea',            urls: ['https://ideabank.ua/uk', 'https://ideabank.ua/'] },
     { id: 'komin',           urls: ['https://cib.com.ua/uk', 'https://cib.com.ua/uk/private', 'https://cib.com.ua/uk/about/page/informaciya-pro-bank'] },
-    { id: 'alliance',        urls: ['https://alb.ua/currency'] },
+    { id: 'alliance',        urls: ['https://www.alb.ua/', 'https://alb.ua/uk', 'https://alb.ua/currency'] },
     { id: 'poltava',         urls: ['https://poltavabank.com/'] },
     { id: 'polikom',         urls: ['https://www.policombank.com/kurs-valjut', 'https://www.policombank.com/'] },
     { id: 'ukrcapital',      urls: ['https://www.ukrcapital.com.ua/'] },
@@ -352,11 +352,13 @@ function parseDedicatedBankHtml(id, html, anchors, isPlain = false) {
 }
 
 function publishedBankDate(id, html) {
-    if (id !== 'polikom' && id !== 'komin' && id !== 'oschad') return null;
+    if (!['polikom', 'komin', 'oschad', 'pivdenny'].includes(id)) return null;
     const plain = stripHtmlTags(html);
     const re = id === 'polikom'
         ? /Курс\s+валют\s+для\s+готівкових\s+операцій\s+від\s+(\d{2})\.(\d{2})\.(\d{4})/i
-        : /Курс\s+валют[\s\S]{0,100}?(\d{2})\.(\d{2})\.(\d{4})/i;
+        : id === 'pivdenny'
+            ? /Курси\s+валют\s+у\s+відділеннях[\s\S]{0,90}?Курс\s+на\s+дату\s*:?\s*(\d{2})\.(\d{2})\.(\d{4})/i
+            : /Курс\s+валют[\s\S]{0,100}?(\d{2})\.(\d{2})\.(\d{4})/i;
     const m = plain.match(re);
     if (!m) return null;
     const year = Number(m[3]), month = Number(m[2]), day = Number(m[1]);
@@ -365,9 +367,83 @@ function publishedBankDate(id, html) {
     return d.toISOString().slice(0, 10);
 }
 
+
+// Спеціалізовані розбори ПУБЛІЧНИХ сторінок банків, де звичайні HTML-таблиці
+// відсутні. Не використовуйте ці шаблони на сторінках інших установ.
+// Повинні бути явні назви валют та окремі ціни купівлі/продажу.
+function parseOfficialTextVariants(id, html, anchors, isPlain = false) {
+    const text = isPlain ? String(html).replace(/\s+/g, ' ').trim() : stripHtmlTags(String(html));
+    const out = {};
+    const normalized = (cc, buyText, sellText) => {
+        const buy = normalizeRateValue(Number(String(buyText).replace(',', '.')), anchors[cc]);
+        const sell = normalizeRateValue(Number(String(sellText).replace(',', '.')), anchors[cc]);
+        if (buy != null && sell != null && buy > 0 && buy <= sell && (sell - buy) / buy <= 0.12) {
+            out[cc] = { buy, sell };
+        }
+    };
+    const amount = '(\\d{1,3}(?:[.,]\\d{1,5})?)';
+
+    if (id === 'alliance') {
+        // На головній сторінці Alliance: «Валютообмін ... Основний Купівля / Продаж
+        // USD 44.90 / 45.30 ...». Беремо лише перший основний блок, не «НБУ».
+        const start = text.search(/Валютообмін/i);
+        if (start < 0) return null;
+        const section = text.slice(start, start + 2500);
+        const head = section.match(/Основний\s+Купівля\s*\/\s*Продаж/i);
+        if (!head) return null;
+        const block = section.slice(head.index + head[0].length).split(/Крос-курс|Основний\s+Купівля/i)[0].slice(0, 650);
+        for (const cc of ['USD', 'EUR']) {
+            const m = block.match(new RegExp(`\\b${cc}\\b\\s+${amount}\\s*\/\\s*${amount}`, 'i'));
+            if (m) normalized(cc, m[1], m[2]);
+        }
+    } else if (id === 'sense') {
+        // Sense Bank: «USD / UAH Купівля 45.00 Продаж 45.70».
+        // Не змішуємо різні вкладки, беремо перший блок із чіткими мітками.
+        const section = text.split(/Обмін валют у додатку|Поширені запитання|Як купити валюту/i)[0];
+        for (const cc of ['USD', 'EUR']) {
+            const m = section.match(new RegExp(`\\b${cc}\\s*\\/\\s*UAH\\s+Купівля\\s+${amount}\\s+Продаж\\s+${amount}`, 'i'));
+            if (m) normalized(cc, m[1], m[2]);
+        }
+    } else if (id === 'kredo') {
+        // Лише «Всі курси валют» комерційної сторінки Кредобанку.
+        // У цій таблиці порядок ПОМИНЯНИЙ МІСЦЯМИ: «Продаж | Купівля».
+        const start = text.indexOf('Всі курси валют');
+        if (start < 0) return null;
+        const section = text.slice(start, start + 2100);
+        if (!/Код\s+валюти[\s\S]{0,120}Продаж\s+Купівля/i.test(section)) return null;
+        const names = {
+            USD: /840\s+USD\s+Долар\s+США/i,
+            EUR: /978\s+EUR\s+Євро/i,
+            PLN: /985\s+PLN\s+Польський\s+злотий/i,
+            GBP: /826\s+GBP\s+Фунт\s+стерлінгів/i
+        };
+        for (const [cc, head] of Object.entries(names)) {
+            const m = section.match(new RegExp(`${head.source}\\s+${amount}\\s+${amount}`, 'i'));
+            if (m) normalized(cc, m[2], m[1]);
+        }
+    } else if (id === 'pivdenny') {
+        // Лише «Курси валют у відділеннях» із назвою, кодом і трьома числами
+        // (купівля/продаж/НБУ). Не беріть таблицю мобільного банкінгу за готівкову.
+        const start = text.search(/Курси\s+валют\s+у\s+відділеннях/i);
+        if (start < 0) return null;
+        const section = text.slice(start, start + 1900).split(/Курси\s+валют\s+у\s+Pivdenny|Крос-курси/i)[0];
+        if (!/Купівля\s+Продаж\s+НБУ/i.test(section)) return null;
+        const names = { USD: 'Долар\\s+США', EUR: 'Євро', GBP: 'Англійський\\s+фунт\\s+стерлінгів', PLN: 'Польський\\s+злотий' };
+        for (const [cc, title] of Object.entries(names)) {
+            const m = section.match(new RegExp(`${title}\\s+${cc}\\s+${amount}\\s+${amount}\\s+${amount}`, 'i'));
+            if (m) normalized(cc, m[1], m[2]);
+        }
+    }
+    const pairs = Object.values(out);
+    if (pairs.length > 1 && new Set(pairs.map(p => `${p.buy}/${p.sell}`)).size !== pairs.length) return null;
+    return pairs.length ? out : null;
+}
+
 function bankPageRates(id, html, anchors, isPlain = false) {
     const dedicated = parseDedicatedBankHtml(id, html, anchors, isPlain);
     if (dedicated) return dedicated;
+    const officialText = parseOfficialTextVariants(id, html, anchors, isPlain);
+    if (officialText) return officialText;
     const table = isPlain ? null : parseBankTablesWithHeaders(html, anchors);
     // На сторінках цих банків є також таблиці курсу НБУ, які не можна
     // сприймати за банківську купівлю/продаж. Вимагаємо явні заголовки.
