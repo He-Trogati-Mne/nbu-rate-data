@@ -1,0 +1,39 @@
+name: Bank API diagnostics
+
+on:
+  workflow_dispatch:
+    inputs:
+      banks:
+        description: 'Comma-separated bank IDs (empty = all 26)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect public bank pages
+        env:
+          BANK_IDS: ${{ inputs.banks }}
+        run: node scripts/bank-diagnostics.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bank-api-report
+          path: diagnostics/bank-api-report.json
+          if-no-files-found: warn
+          retention-days: 7
