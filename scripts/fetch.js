@@ -89,7 +89,7 @@ async function saveMono() {
     console.log(`mono    : ${data.length} rates`);
 }
 
-/* ─────────────── Official Bank Websites (with proxy + Chromium bypass) ─────────────── */
+/* ─────────────── Official Bank APIs and Websites ─────────────── */
 
 const BANK_CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN'];
 
@@ -311,8 +311,6 @@ function parseOfficialBankHtml(html, anchors, isPlain = false) {
             if ((sell - buy) / buy <= 0.12) { out[cc] = { buy, sell }; break; }
         }
     }
-    // Якщо різні валюти мають повністю однакові значення, це, найімовірніше,
-    // помилка розбору; не перезаписуємо достовірний попередній файл.
     const pairs = Object.values(out);
     if (pairs.length > 1) {
         const unique = new Set(pairs.map(v => `${v.buy}/${v.sell}`));
@@ -320,9 +318,6 @@ function parseOfficialBankHtml(html, anchors, isPlain = false) {
     }
     return Object.keys(out).length > 0 ? out : null;
 }
-
-// Окремий консервативний парсер для офіційних таблиць Полікомбанку й КОМІНБАНКУ.
-// Визначаємо лише готівкові курси — не змішуємо з картковими чи курсом НБУ.
 function parseDedicatedBankHtml(id, html, anchors, isPlain = false) {
     if (id !== 'polikom' && id !== 'komin') return null;
     const plain = isPlain ? html.replace(/\s+/g, ' ').trim() : stripHtmlTags(html);
@@ -336,7 +331,6 @@ function parseDedicatedBankHtml(id, html, anchors, isPlain = false) {
         if (pos < 0) return null;
         section = plain.slice(pos, pos + 1250).split(/Валютообмін\s+On[- ]?line/i)[0];
     }
-    // Важливо: лише пари, що стоять безпосередньо після коду валюти в таблиці.
     const out = {};
     const re = /(?:^|\s)(USD|EUR|EURO|GBP|PLN)\s+(\d{1,3}(?:[.,]\d{1,5})?)\s*(?:\/\s*|\s+)(\d{1,3}(?:[.,]\d{1,5})?)(?=\s|$)/gi;
     let match;
@@ -367,10 +361,6 @@ function publishedBankDate(id, html) {
     return d.toISOString().slice(0, 10);
 }
 
-
-// Спеціалізовані розбори ПУБЛІЧНИХ сторінок банків, де звичайні HTML-таблиці
-// відсутні. Не використовуйте ці шаблони на сторінках інших установ.
-// Повинні бути явні назви валют та окремі ціни купівлі/продажу.
 function parseOfficialTextVariants(id, html, anchors, isPlain = false) {
     const text = isPlain ? String(html).replace(/\s+/g, ' ').trim() : stripHtmlTags(String(html));
     const out = {};
@@ -384,8 +374,6 @@ function parseOfficialTextVariants(id, html, anchors, isPlain = false) {
     const amount = '(\\d{1,3}(?:[.,]\\d{1,5})?)';
 
     if (id === 'alliance') {
-        // На головній сторінці Alliance: «Валютообмін ... Основний Купівля / Продаж
-        // USD 44.90 / 45.30 ...». Беремо лише перший основний блок, не «НБУ».
         const start = text.search(/Валютообмін/i);
         if (start < 0) return null;
         const section = text.slice(start, start + 2500);
@@ -397,16 +385,12 @@ function parseOfficialTextVariants(id, html, anchors, isPlain = false) {
             if (m) normalized(cc, m[1], m[2]);
         }
     } else if (id === 'sense') {
-        // Sense Bank: «USD / UAH Купівля 45.00 Продаж 45.70».
-        // Не змішуємо різні вкладки, беремо перший блок із чіткими мітками.
         const section = text.split(/Обмін валют у додатку|Поширені запитання|Як купити валюту/i)[0];
         for (const cc of ['USD', 'EUR']) {
             const m = section.match(new RegExp(`\\b${cc}\\s*\\/\\s*UAH\\s+Купівля\\s+${amount}\\s+Продаж\\s+${amount}`, 'i'));
             if (m) normalized(cc, m[1], m[2]);
         }
     } else if (id === 'kredo') {
-        // Лише «Всі курси валют» комерційної сторінки Кредобанку.
-        // У цій таблиці порядок ПОМИНЯНИЙ МІСЦЯМИ: «Продаж | Купівля».
         const start = text.indexOf('Всі курси валют');
         if (start < 0) return null;
         const section = text.slice(start, start + 2100);
@@ -422,8 +406,6 @@ function parseOfficialTextVariants(id, html, anchors, isPlain = false) {
             if (m) normalized(cc, m[2], m[1]);
         }
     } else if (id === 'pivdenny') {
-        // Лише «Курси валют у відділеннях» із назвою, кодом і трьома числами
-        // (купівля/продаж/НБУ). Не беріть таблицю мобільного банкінгу за готівкову.
         const start = text.search(/Курси\s+валют\s+у\s+відділеннях/i);
         if (start < 0) return null;
         const section = text.slice(start, start + 1900).split(/Курси\s+валют\s+у\s+Pivdenny|Крос-курси/i)[0];
@@ -445,10 +427,207 @@ function bankPageRates(id, html, anchors, isPlain = false) {
     const officialText = parseOfficialTextVariants(id, html, anchors, isPlain);
     if (officialText) return officialText;
     const table = isPlain ? null : parseBankTablesWithHeaders(html, anchors);
-    // На сторінках цих банків є також таблиці курсу НБУ, які не можна
-    // сприймати за банківську купівлю/продаж. Вимагаємо явні заголовки.
     if (id === 'oschad' || id === 'pumb') return table;
     return table || parseOfficialBankHtml(html, anchors, isPlain);
+}
+
+const BANK_API_URLS = {
+    'a-bank': 'https://a-bank.com.ua/backend/api/v1/rates',
+    tas: 'https://tascombank.ua/api/currencies/v2',
+    procredit: 'https://procreditbank.com.ua/api/v1/currency/last?rate=mobile',
+    sky: 'https://api.sky.bank/currency/get-offices-currency-rates'
+};
+const BANK_PAGE_ADAPTERS = {
+    sense: 'https://sensebank.ua/currency-exchange',
+    pravex: 'https://www.intesasanpaolobank.ua/kursy-valyut',
+    altbank: 'https://altbank.ua/en',
+    agroprosperis: 'https://ap-bank.com/page/kurs-valjut-na-sogodni',
+    clearing: 'https://clhs.com.ua/ua/kursi-valyut',
+    'credit-dnipro': 'https://creditdnepr.com.ua/currency'
+};
+const SKY_CARD_URL = 'https://api.sky.bank/currency/get-card-currency-rates';
+
+function kyivDate(date = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+function validDate(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s ?? ''));
+    if (!m) return null;
+    const d = new Date(s + 'T00:00:00Z');
+    return Number.isFinite(+d) && d.toISOString().slice(0, 10) === s ? s : null;
+}
+function sourceDate(value, utc = false) {
+    if (typeof value !== 'string') return null;
+    if (utc) {
+        const d = new Date(value);
+        return Number.isFinite(+d) ? validDate(kyivDate(d)) : null;
+    }
+    return validDate(value.slice(0, 10));
+}
+function pageDate(text) {
+    const m = /(\d{2})\.(\d{2})\.(\d{4})/.exec(text);
+    return m ? validDate(`${m[3]}-${m[2]}-${m[1]}`) : null;
+}
+function isFreshDate(date, now = new Date()) {
+    if (!validDate(date)) return false;
+    const age = (Date.parse(kyivDate(now)) - Date.parse(date)) / 86400000;
+    return age >= 0 && age <= 4;
+}
+function strictNumber(v) {
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v !== 'string' || !/^\d+(?:[.,]\d+)?$/.test(v.trim())) return null;
+    const n = Number(v.trim().replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+}
+function exactPair(cc, buyValue, sellValue, anchors) {
+    if (!BANK_CURRENCIES.includes(cc)) return null;
+    const buy = strictNumber(buyValue), sell = strictNumber(sellValue), ref = anchors[cc];
+    if (buy == null || sell == null || !(ref > 0) || buy <= 0 || sell <= buy || buy < ref * .80 || sell > ref * 1.32 || (sell - buy) / buy > .12) return null;
+    return { buy: Math.round(buy * 10000) / 10000, sell: Math.round(sell * 10000) / 10000 };
+}
+function putPair(out, cc, b, s, anchors) {
+    const pair = exactPair(cc, b, s, anchors);
+    if (pair && !out[cc]) out[cc] = pair;
+}
+function usableRates(data) {
+    return !!(data?.USD && data?.EUR) && new Set(Object.values(data).map(x => `${x.buy}/${x.sell}`)).size === Object.keys(data).length;
+}
+function aBankRates(rows, anchors) {
+    const pairs = {}, out = {};
+    if (!Array.isArray(rows)) return out;
+    for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
+        const a = strictNumber(row.rateA), b = strictNumber(row.rateB);
+        if (!(a > 0 && b > 0)) continue;
+        if (row.ccyB === 'UAH' && BANK_CURRENCIES.includes(row.ccyA)) (pairs[row.ccyA] ??= {}).buy = b / a;
+        if (row.ccyA === 'UAH' && BANK_CURRENCIES.includes(row.ccyB)) (pairs[row.ccyB] ??= {}).sell = a / b;
+    }
+    for (const [cc, p] of Object.entries(pairs)) putPair(out, cc, p.buy, p.sell, anchors);
+    return out;
+}
+function skyRates(rows, anchors) {
+    const out = {};
+    if (!Array.isArray(rows)) return out;
+    for (const row of rows) {
+        if (row?.baseCurrency?.code !== 'UAH') continue;
+        const b = strictNumber(row.buyRate?.rate), s = strictNumber(row.sellRate?.rate);
+        const bd = strictNumber(row.buyRate?.base), sd = strictNumber(row.sellRate?.base);
+        if (b > 0 && s > 0 && bd > 0 && sd > 0) putPair(out, row.targetCurrency?.code, b / bd, s / sd, anchors);
+    }
+    return out;
+}
+function parseBankApi(id, raw, anchors, now = new Date()) {
+    let data = {}, rateType, rateDate = null, extra = {};
+    if (id === 'a-bank') {
+        if (raw?.status !== 'ok' || raw?.result !== 'ok') return null;
+        rateDate = sourceDate(raw.date);
+        data = aBankRates(raw.data, anchors);
+        rateType = 'cash';
+        const card = aBankRates(raw.processing, anchors);
+        if (usableRates(card)) extra.ratesByType = { card };
+    } else if (id === 'tas') {
+        if (!Array.isArray(raw)) return null;
+        const rows = raw.flat(1).filter(x => x?.kurs_type === 'card' && x.forc_kurs === 'UAH' && strictNumber(x.forc) === 1 && isFreshDate(sourceDate(x.date), now));
+        rateDate = rows.map(x => sourceDate(x.date)).sort().at(-1) ?? null;
+        for (const x of rows.filter(x => sourceDate(x.date) === rateDate)) putPair(data, x.short_name, x.kurs_buy, x.kurs_sale, anchors);
+        rateType = 'card';
+    } else if (id === 'procredit') {
+        const rows = [...(Array.isArray(raw?.UAHToUSD) ? raw.UAHToUSD : []), ...(Array.isArray(raw?.UAHToEUR) ? raw.UAHToEUR : [])]
+            .filter(x => x?.currencyFrom === 'UAH' && x.rate === 'mobile' && isFreshDate(sourceDate(x.date, true), now))
+            .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+        rateDate = rows.length ? sourceDate(rows[0].date, true) : null;
+        for (const x of rows.filter(x => sourceDate(x.date, true) === rateDate)) putPair(data, x.currencyTo, x.buyValue, x.sellValue, anchors);
+        rateType = 'online';
+    } else if (id === 'sky') {
+        if (raw?.code !== 0 || !Array.isArray(raw.response)) return null;
+        const office = raw.response.find(x => x?.name === 'Київське відділення №1');
+        if (!office) return null;
+        data = skyRates(office.rates, anchors);
+        rateType = 'cash';
+        extra.branch = office.name;
+    } else return null;
+    if (id !== 'sky' && !isFreshDate(rateDate, now)) return null;
+    if (!usableRates(data)) return null;
+    return { data, rateType, rateDate, ...extra };
+}
+async function fetchPublicBankJson(url) {
+    const response = await fetch(url, { headers: { ...UA, Accept: 'application/json' }, signal: AbortSignal.timeout(15000), redirect: 'error' });
+    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+    if (!/json/i.test(response.headers.get('content-type') || '')) throw new Error('Очікувався JSON: ' + url);
+    return response.json();
+}
+async function getBankApiRates(id, anchors) {
+    const url = BANK_API_URLS[id];
+    const result = parseBankApi(id, await fetchPublicBankJson(url), anchors);
+    if (!result) throw new Error('API: відсутні перевірені актуальні курси USD/EUR');
+    if (id === 'sky') {
+        try {
+            const cardRaw = await fetchPublicBankJson(SKY_CARD_URL);
+            const card = cardRaw?.code === 0 ? skyRates(cardRaw.response, anchors) : {};
+            if (usableRates(card)) result.ratesByType = { card };
+        } catch (e) { console.log(`bank    : sky card → ${e.message}`); }
+    }
+    return result;
+}
+
+function parseBankPageAdapter(id, raw, anchors, now = new Date()) {
+    const text = String(raw).replace(/\s+/g, ' ').trim();
+    const data = {};
+    let rateType = 'cash', rateDate = null, branch, section = '', m;
+    const amount = '(\\d{1,3}(?:[.,]\\d{1,5})?)';
+    const names = { USD: 'Долар\\s+США', EUR: 'Євро', GBP: '(?:Англійський\\s+)?Фунт\\s+стерл[іiи]нг[іiи]в' };
+    const namedRows = (block, nbuColumn = false) => {
+        for (const [cc, name] of Object.entries(names)) {
+            const match = block.match(new RegExp(`${name}\\s+${amount}\\s+${amount}${nbuColumn ? '\\s+' + amount : ''}(?=\\s|$)`, 'i'));
+            if (match) putPair(data, cc, match[1], match[2], anchors);
+        }
+    };
+    if (id === 'sense') {
+        m = text.match(/Курс валют\s+(\d{1,2})\s+([а-яіїє]+)\s+(\d{4})\s+Відділення\s+Онлайн\s+Для карток\s+([\s\S]*?)Архів курсів/i);
+        if (!m) return null;
+        const months = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+        const month = months.indexOf(m[2].toLowerCase()) + 1;
+        rateDate = month ? validDate(`${m[3]}-${String(month).padStart(2,'0')}-${m[1].padStart(2,'0')}`) : null;
+        section = m[4];
+        for (const cc of BANK_CURRENCIES) {
+            const p = section.match(new RegExp(`\\b${cc}\\s*\\/\\s*UAH\\s+Купівля\\s+${amount}\\s+Продаж\\s+${amount}(?=\\s|$)`, 'i'));
+            if (p) putPair(data, cc, p[1], p[2], anchors);
+        }
+    } else if (id === 'pravex') {
+        m = text.match(/Дата:\s*(\d{2}\.\d{2}\.\d{4})\s+Готівка\s+НБУ\s+Картки[\s\S]{0,180}?Валюта\s+Купівля\s+Продаж\s+([\s\S]{1,650}?)(?=Вигідно|$)/i);
+        if (!m) return null;
+        rateDate = pageDate(m[1]); namedRows(m[2]);
+    } else if (id === 'altbank') {
+        m = text.match(/Відділення\s+Операції онлайн\s+Купівля для депозиту\s+Для карток\s+([\s\S]{1,400})/i);
+        if (!m) return null;
+        for (const cc of BANK_CURRENCIES) {
+            const p = m[1].match(new RegExp(`\\b${cc}\\s*\\/\\s*UAH\\s+Purchase\\s+${amount}\\s+Sale\\s+${amount}(?=\\s|$)`, 'i'));
+            if (p) putPair(data, cc, p[1], p[2], anchors);
+        }
+    } else if (id === 'agroprosperis') {
+        m = text.match(/на сьогодні,?\s*(\d{2}\.\d{2}\.\d{4})[\s\S]{0,400}?Курс валют для готівкових операцій[\s\S]{0,250}?Валюта\s+Код\s+купівля\s+продаж\s+([\s\S]{1,300}?)(?=Відділення банку|$)/i);
+        if (!m) return null;
+        rateDate = pageDate(m[1]);
+        for (const [cc, name] of Object.entries(names)) {
+            const p = m[2].match(new RegExp(`${name}\\s+${cc}\\s+${amount}\\s+${amount}(?=\\s|$)`, 'i'));
+            if (p) putPair(data, cc, p[1], p[2], anchors);
+        }
+    } else if (id === 'clearing') {
+        m = text.match(/Курс валют в касі банку станом на\s+(\d{2}\.\d{2}\.\d{4})\s*-\s*([^]*?)\s+Валюти\s+Купівля\s+Продаж\s+НБУ\s+([\s\S]*?)Курс конвертації по карткам/i);
+        if (!m || !/Головний офіс,\s*м\.\s*Київ/i.test(m[2])) return null;
+        rateDate = pageDate(m[1]); branch = m[2].trim(); namedRows(m[3], true);
+    } else if (id === 'credit-dnipro') {
+        m = text.match(/КУРСИ ВАЛЮТ ПРИ ПРОВЕДЕННІ ТРАНЗАКЦІЙ ЗА ПЛАТІЖНИМИ КАРТКАМИ НА\s+(\d{2}\.\d{2}\.\d{4})\s+Купівля\s+Продаж\s+([\s\S]*?)КУРС ГРИВНІ ПО ВІДНОШЕННЮ/i);
+        if (!m) return null;
+        rateDate = pageDate(m[1]); rateType = 'card';
+        for (const cc of BANK_CURRENCIES) {
+            const p = m[2].match(new RegExp(`\\b${cc}\\s*\\/\\s*UAH\\s+${amount}\\s+${amount}(?=\\s|$)`, 'i'));
+            if (p) putPair(data, cc, p[1], p[2], anchors);
+        }
+    } else return null;
+    if (id !== 'altbank' && !isFreshDate(rateDate, now)) return null;
+    if (!usableRates(data)) return null;
+    return { data, rateType, rateDate, ...(branch ? { branch } : {}) };
 }
 
 async function runParallel(items, parallelism, fn) {
@@ -473,9 +652,9 @@ async function saveOfficialBanks() {
     const statusFile = process.env.NBU_BANK_STATUS_FILE || 'bank-fetch-status.json';
     console.log(`banks   : перевіряємо ${selected.length} банків, тільки офіційні сайти`);
 
-    const persist = async (bank, result, url, via, html) => {
+    const persist = async (bank, result, url, via, html, meta = {}) => {
         // Для банків з датованими офіційними таблицями не робимо старий курс «новим».
-        const rateDate = publishedBankDate(bank.id, html);
+        const rateDate = meta.rateDate ?? publishedBankDate(bank.id, html);
         if (rateDate) {
             const ageDays = Math.floor((Date.now() - new Date(rateDate + 'T00:00:00Z').getTime()) / 86400000);
             if (ageDays > 4 || ageDays < -1) {
@@ -486,8 +665,9 @@ async function saveOfficialBanks() {
             }
         }
         // Наявні назви файлів та схема {updatedAt, source, data} збережені.
-        await writeJson(bank.id, result, { source: new URL(url).hostname, via, ...(rateDate ? { rateDate } : {}) });
-        statuses[bank.id] = { status: 'updated', source: url, via, currencies: Object.keys(result), rateDate };
+        const { rateDate: _date, ...extra } = meta;
+        await writeJson(bank.id, result, { source: new URL(url).hostname, via, ...(rateDate ? { rateDate } : {}), ...extra });
+        statuses[bank.id] = { status: 'updated', source: url, via, currencies: Object.keys(result), rateDate, ...(meta.rateType ? { rateType: meta.rateType } : {}), ...(meta.branch ? { branch: meta.branch } : {}) };
         saved++;
         console.log(`bank    : ${bank.id} → ${Object.keys(result).join(', ')} [${via}]${rateDate ? ' курс за '+rateDate : ''}`);
         return true;
@@ -495,6 +675,25 @@ async function saveOfficialBanks() {
 
     // Швидкі HTTP-запити виконуємо паралельно, але з обмеженням навантаження.
     await runParallel(selected, 4, async bank => {
+        // Known API sources take priority. Never replace a failed typed API with an ambiguous HTML rate.
+        if (Object.hasOwn(BANK_API_URLS, bank.id)) {
+            const url = BANK_API_URLS[bank.id];
+            try {
+                const { data, ...meta } = await getBankApiRates(bank.id, anchors);
+                await persist(bank, data, url, 'api', '', meta);
+            } catch (e) { statuses[bank.id] = { status: 'not_updated', reason: e.message, source: url }; }
+            return;
+        }
+        // These public pages were verified through ordinary Chromium navigation on GitHub.
+        if (Object.hasOwn(BANK_PAGE_ADAPTERS, bank.id)) {
+            pendingPlaywright.push({ ...bank, urls: [BANK_PAGE_ADAPTERS[bank.id]], dedicatedPage: true });
+            statuses[bank.id] = { status: 'not_updated', reason: 'Очікується Chromium' };
+            return;
+        }
+        if (bank.id === 'vostok') {
+            statuses[bank.id] = { status: 'not_updated', reason: 'Знайдено лише курс НБУ, не банківський курс купівлі/продажу' };
+            return;
+        }
         let error = 'Не знайдено перевірених курсів у HTML';
         let hadAccessiblePage = false;
         let hadForbiddenPage = false;
@@ -516,8 +715,6 @@ async function saveOfficialBanks() {
         }
         error = hadAccessiblePage ? 'Сторінку завантажено, але курси не розпізнані' : (pageErrors.join('; ') || error);
         statuses[bank.id] = { status: 'not_updated', reason: statuses[bank.id]?.reason || error };
-        // Chromium застосовуємо лише до доступних HTTP-сторінок, що потребують JavaScript.
-        // Не обходимо блокування 401/403.
         if (hadAccessiblePage || !hadForbiddenPage) pendingPlaywright.push(bank);
         else console.log(`bank    : ${bank.id} → ${error}, старий JSON збережено`);
     });
@@ -544,9 +741,21 @@ async function saveOfficialBanks() {
                                     error = `${url}: HTTP ${response?.status() ?? 'unknown'}`;
                                     continue;
                                 }
-                                await page.waitForTimeout(1200);
+                                await page.waitForTimeout(bank.dedicatedPage ? 5000 : 1200);
                                 const text = await page.locator('body').innerText({ timeout: 5000 });
                                 const html = await page.content();
+                                if (bank.dedicatedPage) {
+                                    const expectedHost = new URL(url).hostname.replace(/^www\./, '');
+                                    const finalHost = new URL(page.url()).hostname.replace(/^www\./, '');
+                                    if (finalHost !== expectedHost) { error = 'Неочікуване перенаправлення'; continue; }
+                                    const parsed = parseBankPageAdapter(bank.id, text, anchors);
+                                    if (parsed) {
+                                        const { data, ...meta } = parsed;
+                                        if (await persist(bank, data, url, 'browser', html, meta)) return;
+                                    }
+                                    error = 'Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці';
+                                    continue;
+                                }
                                 const parsed = bankPageRates(bank.id, html, anchors) || bankPageRates(bank.id, text, anchors, true);
                                 if (parsed && await persist(bank, parsed, url, 'browser', html)) return;
                             } catch (e) { error = `${url}: ${e.message}`; }
