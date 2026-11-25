@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       banks:
-        description: 'Comma-separated bank IDs (empty = all 26)'
+        description: 'all = all 26 banks, or comma-separated IDs (e.g. sky,ukrsib)'
         required: false
-        default: ''
+        default: 'all'
         type: string
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Inspect public bank pages
         env:
-          BANK_IDS: ${{ inputs.banks }}
+          BANK_IDS: ${{ inputs.banks || 'all' }}
         run: node scripts/bank-diagnostics.mjs
       - name: Upload report
         if: always()
