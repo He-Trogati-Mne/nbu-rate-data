@@ -1,10 +1,10 @@
 {
-  "checkedAt": "2026-11-25T01:02:18.949Z",
-  "runId": "45522401059",
-  "updated": 31,
-  "refreshed": 31,
+  "checkedAt": "2026-11-25T02:22:09.648Z",
+  "runId": "45532149979",
+  "updated": 30,
+  "refreshed": 30,
   "total": 48,
-  "notUpdated": 17,
+  "notUpdated": 18,
   "banks": {
     "raif": {
       "status": "not_updated",
@@ -35,6 +35,15 @@
       ],
       "rateDate": null
     },
+    "ukrgas": {
+      "status": "updated",
+      "source": "https://www.ukrgasbank.com/",
+      "via": "html",
+      "currencies": [
+        "USD"
+      ],
+      "rateDate": null
+    },
     "oschad": {
       "status": "updated",
       "source": "https://www.oschadbank.ua/msb/currency-rate",
@@ -44,15 +53,6 @@
         "EUR"
       ],
       "rateDate": "2026-11-25"
-    },
-    "ukrgas": {
-      "status": "updated",
-      "source": "https://www.ukrgasbank.com/",
-      "via": "html",
-      "currencies": [
-        "USD"
-      ],
-      "rateDate": null
     },
     "pivdenny": {
       "status": "not_updated",
@@ -72,14 +72,13 @@
       "previousUpdatedAt": null,
       "previousSource": null
     },
-    "ukrexim": {
+    "credit-agricole": {
       "status": "updated",
-      "source": "https://www.eximb.com/ua/",
+      "source": "https://credit-agricole.ua/kurs-valyut",
       "via": "html",
       "currencies": [
         "USD",
-        "EUR",
-        "GBP"
+        "EUR"
       ],
       "rateDate": null
     },
@@ -94,13 +93,14 @@
       "rateDate": "2026-11-25",
       "rateType": "cash"
     },
-    "credit-agricole": {
+    "ukrexim": {
       "status": "updated",
-      "source": "https://credit-agricole.ua/kurs-valyut",
+      "source": "https://www.eximb.com/ua/",
       "via": "html",
       "currencies": [
         "USD",
-        "EUR"
+        "EUR",
+        "GBP"
       ],
       "rateDate": null
     },
@@ -116,6 +116,17 @@
       "rateDate": "2026-11-25",
       "rateType": "cash"
     },
+    "kredo": {
+      "status": "updated",
+      "source": "https://kredobank.com.ua/info/kursy-valyut/commercial",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "PLN"
+      ],
+      "rateDate": null
+    },
     "tas": {
       "status": "updated",
       "source": "https://tascombank.ua/api/currencies/v2",
@@ -129,42 +140,11 @@
       "rateDate": "2026-11-25",
       "rateType": "card"
     },
-    "otp": {
-      "status": "updated",
-      "source": "https://www.otpbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
     "idea": {
       "status": "not_updated",
       "reason": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
       "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
       "previousSource": "minfin.com.ua"
-    },
-    "piraeus": {
-      "status": "updated",
-      "source": "https://www.piraeusbank.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "kredo": {
-      "status": "updated",
-      "source": "https://kredobank.com.ua/info/kursy-valyut/commercial",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "PLN"
-      ],
-      "rateDate": null
     },
     "globus": {
       "status": "updated",
@@ -174,6 +154,16 @@
         "USD",
         "EUR",
         "GBP"
+      ],
+      "rateDate": null
+    },
+    "otp": {
+      "status": "updated",
+      "source": "https://www.otpbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
       ],
       "rateDate": null
     },
@@ -188,15 +178,13 @@
       ],
       "rateDate": null
     },
-    "ukrcapital": {
+    "piraeus": {
       "status": "updated",
-      "source": "https://www.ukrcapital.com.ua/",
+      "source": "https://www.piraeusbank.ua/",
       "via": "html",
       "currencies": [
         "USD",
-        "EUR",
-        "GBP",
-        "PLN"
+        "EUR"
       ],
       "rateDate": null
     },
@@ -207,6 +195,18 @@
       "currencies": [
         "USD",
         "EUR"
+      ],
+      "rateDate": null
+    },
+    "ukrcapital": {
+      "status": "updated",
+      "source": "https://www.ukrcapital.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP",
+        "PLN"
       ],
       "rateDate": null
     },
@@ -239,7 +239,7 @@
     },
     "asvio": {
       "status": "not_updated",
-      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "reason": "https://www.asviobank.ua/: page.goto: Timeout 16000ms exceeded.\nCall log:\n  - navigating to \"https://www.asviobank.ua/\", waiting until \"domcontentloaded\"\n",
       "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
       "previousSource": "minfin.com.ua"
     },
@@ -249,17 +249,17 @@
       "previousUpdatedAt": "2026-11-24T22:38:59.440Z",
       "previousSource": "bankvostok.com.ua"
     },
-    "polikom": {
-      "status": "not_updated",
-      "reason": "https://www.policombank.com/: HTTP 502",
-      "previousUpdatedAt": "2026-11-25T00:04:33.435Z",
-      "previousSource": "www.policombank.com"
-    },
     "mtb": {
       "status": "not_updated",
       "reason": "Не знайдено перевірених курсів після JavaScript",
       "previousUpdatedAt": "2026-11-24T22:36:15.532Z",
       "previousSource": "mtb.ua"
+    },
+    "polikom": {
+      "status": "not_updated",
+      "reason": "https://www.policombank.com/: HTTP 502",
+      "previousUpdatedAt": "2026-11-25T00:04:33.435Z",
+      "previousSource": "www.policombank.com"
     },
     "radabank": {
       "status": "updated",
@@ -284,6 +284,16 @@
       "rateDate": "2026-11-24",
       "rateType": "card"
     },
+    "accord": {
+      "status": "updated",
+      "source": "https://accordbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
     "procredit": {
       "status": "updated",
       "source": "https://procreditbank.com.ua/api/v1/currency/last?rate=mobile",
@@ -294,16 +304,6 @@
       ],
       "rateDate": "2026-11-25",
       "rateType": "online"
-    },
-    "accord": {
-      "status": "updated",
-      "source": "https://accordbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
     },
     "altbank": {
       "status": "updated",
@@ -322,13 +322,14 @@
       "previousUpdatedAt": "2026-11-24T22:39:14.106Z",
       "previousSource": "www.universalbank.com.ua"
     },
-    "unex": {
+    "mib": {
       "status": "updated",
-      "source": "https://unexbank.ua/",
-      "via": "html",
+      "source": "https://ii-bank.com.ua/uk/private-clients/rates",
+      "via": "browser",
       "currencies": [
         "USD",
-        "EUR"
+        "EUR",
+        "GBP"
       ],
       "rateDate": null
     },
@@ -343,22 +344,21 @@
       "rateDate": "2026-11-25",
       "rateType": "cash"
     },
-    "mib": {
-      "status": "updated",
-      "source": "https://ii-bank.com.ua/uk/private-clients/rates",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": null
-    },
     "avangard": {
       "status": "not_updated",
       "reason": "https://avgd.ua/: HTTP 403",
       "previousUpdatedAt": null,
       "previousSource": null
+    },
+    "unex": {
+      "status": "updated",
+      "source": "https://unexbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
     },
     "bizbank": {
       "status": "not_updated",
@@ -407,18 +407,6 @@
       ],
       "rateDate": null
     },
-    "sky": {
-      "status": "updated",
-      "source": "https://api.sky.bank/currency/get-offices-currency-rates",
-      "via": "api",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null,
-      "rateType": "cash",
-      "branch": "Київське відділення №1"
-    },
     "pinbank": {
       "status": "updated",
       "source": "https://www.pinbank.ua/",
@@ -440,6 +428,13 @@
       ],
       "rateDate": null
     },
+    "sky": {
+      "status": "not_updated",
+      "reason": "fetch failed",
+      "source": "https://api.sky.bank/currency/get-offices-currency-rates",
+      "previousUpdatedAt": "2026-11-25T01:00:47.898Z",
+      "previousSource": "api.sky.bank"
+    },
     "komin": {
       "status": "not_updated",
       "reason": "https://cib.com.ua/uk/about/page/informaciya-pro-bank: page.goto: Timeout 16000ms exceeded.\nCall log:\n  - navigating to \"https://cib.com.ua/uk/about/page/informaciya-pro-bank\", waiting until \"domcontentloaded\"\n",
@@ -454,16 +449,17 @@
     "lviv": "https://www.banklviv.com/: HTTP 403",
     "idea": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
     "industrial": "https://industrialbank.ua/: HTTP 403",
-    "asvio": "Не знайдено перевірених курсів після JavaScript",
+    "asvio": "https://www.asviobank.ua/: page.goto: Timeout 16000ms exceeded.\nCall log:\n  - navigating to \"https://www.asviobank.ua/\", waiting until \"domcontentloaded\"\n",
     "vostok": "Знайдено лише курс НБУ, не банківський курс купівлі/продажу",
-    "polikom": "https://www.policombank.com/: HTTP 502",
     "mtb": "Не знайдено перевірених курсів після JavaScript",
+    "polikom": "https://www.policombank.com/: HTTP 502",
     "universal": "https://www.universalbank.com.ua/: HTTP 403",
     "avangard": "https://avgd.ua/: HTTP 403",
     "bizbank": "https://www.bisbank.com.ua/: HTTP 403",
     "oksi": "https://www.oxibank.ua/: page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.oxibank.ua/\nCall log:\n  - navigating to \"https://www.oxibank.ua/\", waiting until \"domcontentloaded\"\n",
     "family": "https://www.fbank.com.ua/: HTTP 403",
     "trust-capital": "https://www.tc-bank.com/: HTTP 403",
+    "sky": "fetch failed",
     "komin": "https://cib.com.ua/uk/about/page/informaciya-pro-bank: page.goto: Timeout 16000ms exceeded.\nCall log:\n  - navigating to \"https://cib.com.ua/uk/about/page/informaciya-pro-bank\", waiting until \"domcontentloaded\"\n"
   },
   "note": "Жодні попередні JSON не видаляються та не отримуються зі сторонніх агрегаторів."
