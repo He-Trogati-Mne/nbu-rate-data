@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-25T04:58:25.788Z",
-  "runId": "45550279058",
+  "checkedAt": "2026-11-25T11:47:07.663Z",
+  "runId": "45607522213",
   "updated": 2,
   "refreshed": 2,
   "total": 6,
@@ -44,7 +44,7 @@
     "alliance": {
       "status": "not_updated",
       "reason": "Сторінку завантажено, але курси не розпізнані",
-      "previousUpdatedAt": "2026-11-25T03:50:24.262Z",
+      "previousUpdatedAt": "2026-11-25T11:37:57.592Z",
       "previousSource": "alb.ua"
     },
     "komin": {
