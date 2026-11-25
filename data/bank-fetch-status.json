@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-25T03:51:25.077Z",
-  "runId": "45542554781",
+  "checkedAt": "2026-11-25T11:38:59.759Z",
+  "runId": "45606016568",
   "updated": 31,
   "refreshed": 31,
   "total": 48,
@@ -40,9 +40,16 @@
       "source": "https://www.ukrgasbank.com/",
       "via": "html",
       "currencies": [
-        "USD"
+        "USD",
+        "EUR"
       ],
       "rateDate": null
+    },
+    "pivdenny": {
+      "status": "not_updated",
+      "reason": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-23T21:40:20.117Z",
+      "previousSource": "bank.com.ua"
     },
     "oschad": {
       "status": "updated",
@@ -54,28 +61,11 @@
       ],
       "rateDate": "2026-11-25"
     },
-    "pivdenny": {
-      "status": "not_updated",
-      "reason": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
-      "previousUpdatedAt": "2026-11-23T21:40:20.117Z",
-      "previousSource": "bank.com.ua"
-    },
     "ukrsib": {
       "status": "not_updated",
       "reason": "Не знайдено перевірених курсів після JavaScript",
       "previousUpdatedAt": "2026-11-24T22:33:58.624Z",
       "previousSource": "ukrsibbank.com"
-    },
-    "ukrexim": {
-      "status": "updated",
-      "source": "https://www.eximb.com/ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": null
     },
     "lviv": {
       "status": "not_updated",
@@ -90,6 +80,17 @@
       "currencies": [
         "USD",
         "EUR"
+      ],
+      "rateDate": null
+    },
+    "ukrexim": {
+      "status": "updated",
+      "source": "https://www.eximb.com/ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
       ],
       "rateDate": null
     },
@@ -122,28 +123,12 @@
       "via": "api",
       "currencies": [
         "GBP",
-        "USD",
-        "EUR",
-        "PLN"
-      ],
-      "rateDate": "2026-11-25",
-      "rateType": "card"
-    },
-    "otp": {
-      "status": "updated",
-      "source": "https://www.otpbank.com.ua/",
-      "via": "html",
-      "currencies": [
+        "PLN",
         "USD",
         "EUR"
       ],
-      "rateDate": null
-    },
-    "idea": {
-      "status": "not_updated",
-      "reason": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
-      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
-      "previousSource": "minfin.com.ua"
+      "rateDate": "2026-11-25",
+      "rateType": "card"
     },
     "kredo": {
       "status": "updated",
@@ -153,6 +138,16 @@
         "USD",
         "EUR",
         "PLN"
+      ],
+      "rateDate": null
+    },
+    "otp": {
+      "status": "updated",
+      "source": "https://www.otpbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
       ],
       "rateDate": null
     },
@@ -166,6 +161,12 @@
         "GBP"
       ],
       "rateDate": null
+    },
+    "idea": {
+      "status": "not_updated",
+      "reason": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
     },
     "piraeus": {
       "status": "updated",
@@ -281,8 +282,18 @@
         "EUR",
         "GBP"
       ],
-      "rateDate": "2026-11-24",
+      "rateDate": "2026-11-25",
       "rateType": "card"
+    },
+    "accord": {
+      "status": "updated",
+      "source": "https://accordbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
     },
     "procredit": {
       "status": "updated",
@@ -294,16 +305,6 @@
       ],
       "rateDate": "2026-11-25",
       "rateType": "online"
-    },
-    "accord": {
-      "status": "updated",
-      "source": "https://accordbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
     },
     "altbank": {
       "status": "updated",
@@ -344,12 +345,6 @@
       "rateDate": "2026-11-25",
       "rateType": "cash"
     },
-    "avangard": {
-      "status": "not_updated",
-      "reason": "https://avgd.ua/: HTTP 403",
-      "previousUpdatedAt": null,
-      "previousSource": null
-    },
     "unex": {
       "status": "updated",
       "source": "https://unexbank.ua/",
@@ -359,6 +354,12 @@
         "EUR"
       ],
       "rateDate": null
+    },
+    "avangard": {
+      "status": "not_updated",
+      "reason": "https://avgd.ua/: HTTP 403",
+      "previousUpdatedAt": null,
+      "previousSource": null
     },
     "bizbank": {
       "status": "not_updated",
@@ -393,7 +394,7 @@
         "EUR",
         "GBP"
       ],
-      "rateDate": "2026-11-24",
+      "rateDate": "2026-11-25",
       "rateType": "cash",
       "branch": "Головний офіс, м. Київ, вул. Борисоглібська, 5-A"
     },
@@ -404,17 +405,6 @@
       "currencies": [
         "USD",
         "EUR"
-      ],
-      "rateDate": null
-    },
-    "pinbank": {
-      "status": "updated",
-      "source": "https://www.pinbank.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "PLN"
       ],
       "rateDate": null
     },
@@ -429,6 +419,17 @@
       "rateDate": null,
       "rateType": "cash",
       "branch": "Київське відділення №1"
+    },
+    "pinbank": {
+      "status": "updated",
+      "source": "https://www.pinbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "PLN"
+      ],
+      "rateDate": null
     },
     "krystal": {
       "status": "updated",
