@@ -1,1 +1,64 @@
-{"checkedAt":"2026-11-24T22:33:33.032Z","refreshed":1,"total":6,"errors":{"asvio":"no validated pairs (dynamic page / blocked / changed markup)","a-bank":"no validated pairs (dynamic page / blocked / changed markup)","alliance":"no validated pairs (dynamic page / blocked / changed markup)","idea":"no validated pairs (dynamic page / blocked / changed markup)","komin":"fetch failed","pumb":"HTTP 403"}}
+{
+  "checkedAt": "2026-11-25T04:58:25.788Z",
+  "runId": "45550279058",
+  "updated": 2,
+  "refreshed": 2,
+  "total": 6,
+  "notUpdated": 4,
+  "banks": {
+    "idea": {
+      "status": "not_updated",
+      "reason": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    },
+    "a-bank": {
+      "status": "updated",
+      "source": "https://a-bank.com.ua/backend/api/v1/rates",
+      "via": "api",
+      "currencies": [
+        "EUR",
+        "USD"
+      ],
+      "rateDate": "2026-11-25",
+      "rateType": "cash"
+    },
+    "pumb": {
+      "status": "updated",
+      "source": "https://about.pumb.ua/info/currency_converter",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP",
+        "PLN"
+      ],
+      "rateDate": null
+    },
+    "asvio": {
+      "status": "not_updated",
+      "reason": "Сторінку завантажено, але курси не розпізнані",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    },
+    "alliance": {
+      "status": "not_updated",
+      "reason": "Сторінку завантажено, але курси не розпізнані",
+      "previousUpdatedAt": "2026-11-25T03:50:24.262Z",
+      "previousSource": "alb.ua"
+    },
+    "komin": {
+      "status": "not_updated",
+      "reason": "https://cib.com.ua/uk: fetch failed; https://cib.com.ua/uk/private: fetch failed; https://cib.com.ua/uk/about/page/informaciya-pro-bank: fetch failed",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    }
+  },
+  "errors": {
+    "idea": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
+    "asvio": "Сторінку завантажено, але курси не розпізнані",
+    "alliance": "Сторінку завантажено, але курси не розпізнані",
+    "komin": "https://cib.com.ua/uk: fetch failed; https://cib.com.ua/uk/private: fetch failed; https://cib.com.ua/uk/about/page/informaciya-pro-bank: fetch failed"
+  },
+  "note": "Жодні попередні JSON не видаляються та не отримуються зі сторонніх агрегаторів."
+}
