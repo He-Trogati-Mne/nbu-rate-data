@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 
-// Only bank-owned public pages; no proxy, authentication or challenge bypass.
+// Combined diagnostics: metadata for first-party public endpoints, samples for known currency APIs.
 const banks = {
   raif: 'https://raiffeisen.ua/currency',
   ukrsib: 'https://ukrsibbank.com/currency-cash/',
@@ -29,6 +29,22 @@ const banks = {
   clearing: 'https://www.clhs.com.ua/ua/kursi-valyut',
   sky: 'https://sky.bank/uk/currency',
 };
+const sampleSources = {
+  sense: ['https://sensebank.ua/currency-exchange', ['https://sensebank.ua/api/currency/archive']],
+  'a-bank': ['https://a-bank.com.ua/', ['https://a-bank.com.ua/backend/api/v1/rates', 'https://a-bank.com.ua/backend/api/v1/legal/rates']],
+  tas: ['https://tascombank.ua/', ['https://tascombank.ua/api/currencies/v2']],
+  vostok: ['https://vstbank.ua/', ['https://vstbank.ua/api/api/GetCurrencyRates']],
+  procredit: ['https://procreditbank.com.ua/kursi-valyut', ['https://procreditbank.com.ua/api/v1/currency/last', 'https://procreditbank.com.ua/api/v1/currency']],
+  sky: ['https://sky.bank/uk/currency', ['https://api.sky.bank/currency/get-offices-currency-rates', 'https://api.sky.bank/currency/get-card-currency-rates']],
+  pravex: ['https://www.intesasanpaolobank.ua/kursy-valyut', []],
+  mtb: ['https://mtb.ua/currency', []],
+  'credit-dnipro': ['https://creditdnepr.com.ua/currency', []],
+  altbank: ['https://altbank.ua/en', []],
+  agroprosperis: ['https://ap-bank.com/page/kurs-valjut-na-sogodni', []],
+  clearing: ['https://www.clhs.com.ua/ua/kursi-valyut', ['https://clhs.com.ua/dates/json']],
+  ukrsib: ['https://ukrsibbank.com/currency-cash/', []],
+  asvio: ['https://www.asviobank.ua/', []],
+};
 // Empty input, all, or * selects all 26 diagnostic banks.
 const raw = (process.env.BANK_IDS ?? '').trim();
 const tokens = [...new Set(raw.toLowerCase().split(/[,;\s]+/u)
@@ -48,85 +64,103 @@ if (!wanted.length) {
 const selected = Object.entries(banks).filter(([id]) => wanted.includes(id));
 console.log(`Selected ${selected.length}/${Object.keys(banks).length} banks: ${selected.map(([id]) => id).join(', ')}`);
 if (process.argv.includes('--dry-run')) process.exit(0);
-const report = [];
-const currency = /\b(?:USD|EUR|GBP|PLN|CHF|UAH)\b|долар|євро|валют/i;
-const rate = /rate|currency|exchange|forex|курс|купівл|продаж|\bbuy\b|\bsell\b/i;
-function safeURL(raw) {
-  const u = new URL(raw);
-  // Do not store query values, fragments, cookies or headers.
-  return { url: u.origin + u.pathname, queryKeys: [...new Set(u.searchParams.keys())] };
+const knownParams = /^(onDate|fromDate|toDate|date|startDate|endDate|dateFrom|dateTo|currencyFrom|currencyTo|currency|currencyCode|rate|rateType|type|limit|offset|page|perPage|department_id|departmentId)$/i;
+const safeValue = v => ['string','number','boolean'].includes(typeof v) && /^[\w .:+,/-]{1,80}$/.test(String(v));
+function requestParams(obj) {
+  return Object.fromEntries(Object.entries(obj || {}).filter(([k,v]) => knownParams.test(k) && safeValue(v)));
 }
+const privateKey = /token|secret|password|authorization|cookie|session|csrf|api.?key|request.?ref|response.?ref|email|phone|address|account|iban|passport|client.?id|user.?id|card.?number/i;
+function sample(value, depth = 0) {
+  if (depth > 12) return '[depth limit]';
+  if (Array.isArray(value)) return value.slice(0, 40).map(v => sample(v, depth+1));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).slice(0,100).filter(([k]) => !privateKey.test(k)).map(([k,v]) => [k,sample(v,depth+1)]));
+  if (typeof value === 'string') return value.slice(0, 300);
+  return value;
+}
+const currency = /\b(?:USD|EUR|GBP|PLN|CHF|UAH)\b|долар|євро|злот|фунт|dollar|euro/i;
+const rates = /купівл|продаж|купити|продати|\bbuy\b|\bsell\b|курс|exchange rate/i;
+const dir = 'diagnostics';
+await mkdir(dir, {recursive:true});
+const report = {checkedAt:new Date().toISOString(), selected: selected.map(([id])=>id), banks:[]};
+const save = () => writeFile(`${dir}/bank-api-report.json`, JSON.stringify(report,null,2)+'\n');
+await save();
 const { chromium } = await import('playwright');
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({headless:true});
 try {
-  for (const [id, url] of selected) {
-    const context = await browser.newContext({ locale: 'uk-UA', timezoneId: 'Europe/Kyiv' });
-    const page = await context.newPage();
+  for (const [id,url] of selected) {
+    const endpoints = sampleSources[id]?.[1] ?? [];
     const host = new URL(url).hostname.replace(/^www\./, '');
-    const result = { id, source: url, status: null, currencyText: false, rateText: false, endpoints: [], errors: [] };
-    const jobs = new Set();
+    const entry = {id,source:url,status:null,finalUrl:null,currencyText:false,rateText:false,endpoints:[],api:[],tables:[],textLines:[],errors:[]};
+    const context = await browser.newContext({locale:'uk-UA',timezoneId:'Europe/Kyiv'});
+    const page = await context.newPage();
+    const pending = new Set();
     const seen = new Set();
+    const seenMetadata = new Set();
     let accepting = true;
-    page.on('response', response => {
+    page.on('response', res => {
       if (!accepting) return;
-      const request = response.request();
-      const kind = request.resourceType();
-      const u = new URL(response.url());
-      if (!(u.hostname === host || u.hostname.endsWith('.' + host))) return;
-      if (!['xhr', 'fetch'].includes(kind)) return;
+      const req = res.request();
+      const u = new URL(res.url());
+      if (!['xhr','fetch'].includes(req.resourceType())) return;
+      const endpoint = u.origin+u.pathname;
+      const known = endpoints.includes(endpoint);
+      if (!known && u.hostname !== host && !u.hostname.endsWith('.'+host)) return;
+      const type = res.headers()['content-type'] || '';
+      const metadataKey = JSON.stringify([req.method(),endpoint,res.status(),[...u.searchParams.keys()].sort()]);
+      if (!seenMetadata.has(metadataKey) && entry.endpoints.length < 100 && (known || /json/i.test(type) || currency.test(u.pathname) || rates.test(u.pathname))) {
+        seenMetadata.add(metadataKey);
+        entry.endpoints.push({url:endpoint,method:req.method(),status:res.status(),type,queryKeys:[...new Set(u.searchParams.keys())].filter(k=>!privateKey.test(k)),currencyHint:currency.test(u.pathname),rateHint:rates.test(u.pathname)});
+      }
+      // Capture JSON samples only from the previously observed currency endpoints.
+      if (!known) return;
       const task = (async () => {
-        const type = response.headers()['content-type'] || '';
-        const info = safeURL(response.url());
-        const method = request.method();
-        const key = method + ' ' + info.url + ' ' + response.status();
-        if (seen.has(key)) return;
-        seen.add(key);
-        const item = { ...info, method, status: response.status(), type, currencyHint: currency.test(u.pathname), rateHint: rate.test(u.pathname) };
-        if (response.ok() && /json/i.test(type)) {
-          try {
-            const contentLength = Number(response.headers()['content-length'] || 0);
-            if (!contentLength || contentLength <= 1000000) {
-              const body = await response.text();
-              if (body.length <= 1000000) {
-                item.currencyHint ||= currency.test(body);
-                item.rateHint ||= rate.test(body);
-                const data = JSON.parse(body);
-                const obj = Array.isArray(data) ? data[0] : data;
-                if (obj && typeof obj === 'object') item.keys = Object.keys(obj).slice(0, 30);
-              }
-            }
-          } catch { /* response may not be readable */ }
+        const query = requestParams(Object.fromEntries(u.searchParams));
+        let body = {}, bodyKeys = [];
+        if (req.method() === 'POST') {
+          try { const obj = req.postDataJSON(); if (obj && typeof obj === 'object' && !Array.isArray(obj)) { body = requestParams(obj); bodyKeys = Object.keys(obj).filter(k => !privateKey.test(k)); } } catch {}
         }
-        if (item.currencyHint || item.rateHint || /json/i.test(type)) result.endpoints.push(item);
-      })().catch(() => {});
-      jobs.add(task);
-      task.finally(() => jobs.delete(task));
+        const key = JSON.stringify([req.method(),u.origin+u.pathname,query,body,res.status()]);
+        if (seen.has(key) || entry.api.length >= 20) return;
+        seen.add(key);
+        const item = {url:u.origin+u.pathname,method:req.method(),status:res.status(),query,queryKeys:[...new Set(u.searchParams.keys())].filter(k=>!privateKey.test(k)), ...(req.method()==='POST'?{body,bodyKeys}:{})};
+        entry.api.push(item);
+        if (res.ok() && /json/i.test(res.headers()['content-type'] || '')) {
+          try {
+            if (Number(res.headers()['content-length'] || 0)>2000000) { item.error='Response too large'; return; }
+            const txt=await res.text();
+            if (txt.length>2000000) {item.error='Response too large';return;}
+            const data=JSON.parse(txt);
+            item.sample=sample(data);
+            if (JSON.stringify(item.sample).length>200000) { item.sample=undefined; item.error='Sample too large'; }
+          } catch(e) { item.error=String(e.message).split('\n')[0]; }
+        }
+      })().catch(e=>entry.errors.push(String(e.message).split('\n')[0]));
+      pending.add(task); task.finally(()=>pending.delete(task));
     });
     try {
-      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      result.status = response?.status() ?? null;
-      result.finalUrl = safeURL(page.url()).url;
-      // Do not retry or interact with access-denied/challenge pages.
-      if (result.status && result.status < 400) {
-        await page.waitForTimeout(5000);
-        const body = await page.locator('body').innerText({ timeout: 5000 });
-        result.currencyText = currency.test(body);
-        result.rateText = rate.test(body);
+      const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
+      entry.status=response?.status() ?? null;
+      const final = new URL(page.url());
+      entry.finalUrl = final.origin + final.pathname;
+      if (entry.status >= 200 && entry.status < 400) {
+        await page.waitForTimeout(8000);
+        const tables=await page.locator('table').evaluateAll(nodes=>nodes.slice(0,40).map(t=>Array.from(t.querySelectorAll('tr')).slice(0,40).map(r=>Array.from(r.querySelectorAll('th,td')).slice(0,20).map(c=>c.innerText.trim().slice(0,150)))));
+        entry.tables=tables.filter(t=>currency.test(JSON.stringify(t)) && rates.test(JSON.stringify(t))).slice(0,8);
+        const lines=(await page.locator('body').innerText({timeout:5000})).split(/\n/).map(x=>x.trim()).filter(Boolean);
+        entry.currencyText=currency.test(lines.join(" "));
+        entry.rateText=rates.test(lines.join(" "));
+        const idx=new Set();
+        for (let i=0;i<lines.length;i++) if(currency.test(lines[i]) || rates.test(lines[i])) for(let j=Math.max(0,i-2);j<=Math.min(lines.length-1,i+4);j++) idx.add(j);
+        entry.textLines=[...idx].sort((a,b)=>a-b).slice(0,180).map(i=>lines[i].slice(0,200));
       }
-    } catch (error) {
-      result.errors.push(String(error.message).split('\n')[0]);
-    } finally {
-      accepting = false;
-      await Promise.race([Promise.allSettled([...jobs]), new Promise(resolve => setTimeout(resolve, 5000))]);
+    } catch(e) {entry.errors.push(String(e.message).split('\n')[0]);}
+    finally {
+      accepting=false;
+      await Promise.race([Promise.allSettled([...pending]),new Promise(r=>setTimeout(r,5000))]);
       await context.close();
     }
-    result.endpoints.sort((a,b) => Number(b.currencyHint && b.rateHint) - Number(a.currencyHint && a.rateHint));
-    report.push(result);
-    console.log(`${id}: HTTP ${result.status ?? '—'}, API candidates: ${result.endpoints.length}`);
-    for (const item of result.endpoints.filter(x => x.currencyHint || x.rateHint)) {
-      console.log(`  ${item.method} ${item.url} HTTP ${item.status}`);
-    }
+    report.banks.push(entry);
+    await save();
+    console.log(`${id}: HTTP ${entry.status ?? '—'}, endpoints: ${entry.endpoints.length}, samples: ${entry.api.length}, tables: ${entry.tables.length}, lines: ${entry.textLines.length}`);
   }
 } finally { await browser.close(); }
-await mkdir('diagnostics', { recursive: true });
-await writeFile('diagnostics/bank-api-report.json', JSON.stringify({ checkedAt: new Date().toISOString(), banks: report }, null, 2) + '\n');
