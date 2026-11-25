@@ -1,4 +1,3 @@
-import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 // Only bank-owned public pages; no proxy, authentication or challenge bypass.
@@ -30,9 +29,25 @@ const banks = {
   clearing: 'https://www.clhs.com.ua/ua/kursi-valyut',
   sky: 'https://sky.bank/uk/currency',
 };
-const wanted = (process.env.BANK_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-if (wanted.some(id => !Object.hasOwn(banks, id))) throw new Error('Unknown BANK_IDS');
-const selected = Object.entries(banks).filter(([id]) => !wanted.length || wanted.includes(id));
+// Empty input, all, or * selects all 26 diagnostic banks.
+const raw = (process.env.BANK_IDS ?? '').trim();
+const tokens = [...new Set(raw.toLowerCase().split(/[,;\s]+/u)
+  .map(id => id.replace(/[\u2010-\u2015\u2212]/g, '-'))
+  .filter(Boolean))];
+const all = !tokens.length || (tokens.length === 1 && ['all', '*', 'all 26'].includes(tokens[0])) || /^all\s+26$/i.test(raw);
+const unknown = all ? [] : tokens.filter(id => !Object.hasOwn(banks, id));
+const wanted = all ? Object.keys(banks) : tokens.filter(id => Object.hasOwn(banks, id));
+if (unknown.length) {
+  console.warn(`::warning::Unknown BANK_IDS ignored: ${JSON.stringify(unknown)}`);
+  console.log(`Available IDs: ${Object.keys(banks).join(', ')}`);
+}
+if (!wanted.length) {
+  console.error('No valid bank IDs. Leave the banks field empty or enter all to check all 26 banks.');
+  process.exit(1);
+}
+const selected = Object.entries(banks).filter(([id]) => wanted.includes(id));
+console.log(`Selected ${selected.length}/${Object.keys(banks).length} banks: ${selected.map(([id]) => id).join(', ')}`);
+if (process.argv.includes('--dry-run')) process.exit(0);
 const report = [];
 const currency = /\b(?:USD|EUR|GBP|PLN|CHF|UAH)\b|долар|євро|валют/i;
 const rate = /rate|currency|exchange|forex|курс|купівл|продаж|\bbuy\b|\bsell\b/i;
@@ -41,6 +56,7 @@ function safeURL(raw) {
   // Do not store query values, fragments, cookies or headers.
   return { url: u.origin + u.pathname, queryKeys: [...new Set(u.searchParams.keys())] };
 }
+const { chromium } = await import('playwright');
 const browser = await chromium.launch({ headless: true });
 try {
   for (const [id, url] of selected) {
