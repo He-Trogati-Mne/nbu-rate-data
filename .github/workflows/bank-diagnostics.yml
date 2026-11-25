@@ -25,7 +25,7 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright
           npx playwright install --with-deps chromium
-      - name: Inspect public bank pages
+      - name: Inspect public bank pages and currency APIs
         env:
           BANK_IDS: ${{ inputs.banks || 'all' }}
         run: node scripts/bank-diagnostics.mjs
