@@ -1,0 +1,2 @@
+// Symbols are candidates; a quote is published only after a valid source response.
+export const tickers = ['KYIV','MHPC.L','FXPO.L','AST.WA','KER.WA','IMC.WA','KSG.WA','AAPL','MSFT','NVDA','AMD','INTC','AVGO','IBM','ORCL','META','GOOGL','AMZN','NFLX','UBER','ADBE','CRM','PLTR','ASML','TSM','QCOM','MU','TSLA','RACE','JPM','BAC','V','MA','BRK-B','XOM','CVX','SHEL','JNJ','LLY','NVO','KO','PEP','MCD','WMT','COST','DIS','SONY','SAP','CAT','CSCO'];
