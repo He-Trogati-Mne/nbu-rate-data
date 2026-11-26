@@ -120,10 +120,10 @@ const OFFICIAL_BANK_SOURCES = [
     { id: 'krystal',         urls: ['https://crystalbank.com.ua/', 'https://crystalbank.com.ua/currency'] },
     { id: 'bank34',          urls: ['https://bank34.ua/'] },
     { id: 'grant',           urls: ['https://www.grant.ua/'] },
-    { id: 'industrial',      urls: ['https://industrialbank.ua/'] },
+    { id: 'industrial',      urls: ['https://industrialbank.ua/ua/', 'https://industrialbank.ua/'] },
     { id: 'asvio',           urls: ['https://www.asviobank.ua/'] },
     { id: 'vostok',          urls: ['https://bankvostok.com.ua/'] },
-    { id: 'mtb',             urls: ['https://mtb.ua/'] },
+    { id: 'mtb',             urls: ['https://mtb.ua/currency', 'https://mtb.ua/'] },
     { id: 'accord',          urls: ['https://accordbank.com.ua/'] },
     { id: 'radabank',        urls: ['https://www.radabank.com.ua/'] },
     { id: 'credit-dnipro',   urls: ['https://creditdnepr.com.ua/'] },
@@ -134,9 +134,9 @@ const OFFICIAL_BANK_SOURCES = [
     { id: 'mib',             urls: ['https://ii-bank.com.ua/uk/private-clients/rates', 'https://www.ii-bank.com.ua/'] },
     { id: 'agroprosperis',   urls: ['https://ap-bank.com/'] },
     { id: 'avangard',        urls: ['https://avgd.ua/'] },
-    { id: 'bizbank',         urls: ['https://www.bisbank.com.ua/'] },
+    { id: 'bizbank',         urls: ['https://www.bisbank.com.ua/kurs-valyut/kyyiv/', 'https://www.bisbank.com.ua/'] },
     { id: 'metabank',        urls: ['https://www.mbank.com.ua/'] },
-    { id: 'oksi',            urls: ['https://www.oxibank.ua/'] },
+    { id: 'oksi',            urls: ['https://oxibank.ua/', 'https://www.oxibank.ua/'] },
     { id: 'family',          urls: ['https://www.fbank.com.ua/'] },
     { id: 'trust-capital',   urls: ['https://www.tc-bank.com/'] },
     { id: 'clearing',        urls: ['https://www.clhs.com.ua/'] },
@@ -427,7 +427,7 @@ function bankPageRates(id, html, anchors, isPlain = false) {
     const officialText = parseOfficialTextVariants(id, html, anchors, isPlain);
     if (officialText) return officialText;
     const table = isPlain ? null : parseBankTablesWithHeaders(html, anchors);
-    if (id === 'oschad' || id === 'pumb') return table;
+    if (['oschad','pumb','ukrsib','mtb','asvio'].includes(id)) return table;
     return table || parseOfficialBankHtml(html, anchors, isPlain);
 }
 
@@ -441,6 +441,8 @@ const BANK_PAGE_ADAPTERS = {
     sense: 'https://sensebank.ua/currency-exchange',
     pravex: 'https://www.intesasanpaolobank.ua/kursy-valyut',
     altbank: 'https://altbank.ua/en',
+    ukrsib: 'https://ukrsibbank.com/currency-cash/',
+    mtb: 'https://mtb.ua/currency',
     agroprosperis: 'https://ap-bank.com/page/kurs-valjut-na-sogodni',
     clearing: 'https://clhs.com.ua/ua/kursi-valyut',
     'credit-dnipro': 'https://creditdnepr.com.ua/currency'
@@ -593,6 +595,25 @@ function parseBankPageAdapter(id, raw, anchors, now = new Date()) {
             const p = section.match(new RegExp(`\\b${cc}\\s*\\/\\s*UAH\\s+Купівля\\s+${amount}\\s+Продаж\\s+${amount}(?=\\s|$)`, 'i'));
             if (p) putPair(data, cc, p[1], p[2], anchors);
         }
+    } else if (id === 'mtb') {
+        // Public rate page: central Odesa branch; two consecutive currency blocks, then NBU.
+        const sectionMatch = text.match(/Курси купівлі-продажу[\s\S]{0,500}?Центрального відділення[\s\S]{0,300}?Купівля\s+Продаж\s+([\s\S]{1,800}?)(?=Офіційний курс гривні)/i);
+        if (!sectionMatch) return null;
+        const rows = [...sectionMatch[1].matchAll(/\b(USD|EUR|GBP|PLN)\s+(\d{1,3}(?:[.,]\d{1,5})?)\s+UAH\b/gi)];
+        const half = rows.length / 2;
+        if (!Number.isInteger(half) || half < 2 || rows.slice(0, half).some((r,i)=>r[1]!==rows[i+half][1])) return null;
+        for (let i=0;i<half;i++) putPair(data, rows[i][1], rows[i][2], rows[i+half][2], anchors);
+        branch = 'Центральне відділення, Одеса';
+    } else if (id === 'ukrsib') {
+        // Explicit order of the public five-column table: online buy, cash buy, online sell, cash sell, NBU.
+        const first = text.match(/USD\s+Долар\s+США\s+Купівля online\s+(\d{1,3}[.,]\d{1,5})\s+Купівля готівкою\s+(\d{1,3}[.,]\d{1,5})\s+Продаж online\s+(\d{1,3}[.,]\d{1,5})\s+Продаж готівкою\s+(\d{1,3}[.,]\d{1,5})\s+НБУ\s+(\d{1,3}[.,]\d{1,5})/i);
+        if (!first) return null;
+        putPair(data,'USD',first[2],first[4],anchors);
+        const rest = text.slice(first.index+first[0].length,first.index+first[0].length+500);
+        for (const [cc,name] of Object.entries({EUR:'Євро',GBP:'Фунт стерлінгів',PLN:'Польський злотий'})) {
+            const re=new RegExp('\\b'+cc+'\\s+'+name+'\\s+'+Array(5).fill('(\\d{1,3}[.,]\\d{1,5})').join('\\s+')+'(?=\\s|$)','i');
+            const row=rest.match(re);if(row)putPair(data,cc,row[2],row[4],anchors);
+        }
     } else if (id === 'pravex') {
         m = text.match(/Дата:\s*(\d{2}\.\d{2}\.\d{4})\s+Готівка\s+НБУ\s+Картки[\s\S]{0,180}?Валюта\s+Купівля\s+Продаж\s+([\s\S]{1,650}?)(?=Вигідно|$)/i);
         if (!m) return null;
@@ -625,7 +646,7 @@ function parseBankPageAdapter(id, raw, anchors, now = new Date()) {
             if (p) putPair(data, cc, p[1], p[2], anchors);
         }
     } else return null;
-    if (id !== 'altbank' && !isFreshDate(rateDate, now)) return null;
+    if (!['altbank','mtb','ukrsib'].includes(id) && !isFreshDate(rateDate, now)) return null;
     if (!usableRates(data)) return null;
     return { data, rateType, rateDate, ...(branch ? { branch } : {}) };
 }
@@ -736,12 +757,12 @@ async function saveOfficialBanks() {
                         for (const url of bank.urls) {
                             if (restrictedUrls.get(bank.id)?.has(url)) continue;
                             try {
-                                const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 16000 });
+                                const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ['altbank','komin'].includes(bank.id) ? 35000 : 22000 });
                                 if (!response || response.status() >= 400) {
                                     error = `${url}: HTTP ${response?.status() ?? 'unknown'}`;
                                     continue;
                                 }
-                                await page.waitForTimeout(bank.dedicatedPage ? 5000 : 1200);
+                                await page.waitForTimeout(bank.dedicatedPage || ['ukrsib','asvio','mtb','komin'].includes(bank.id) ? 5500 : 1500);
                                 const text = await page.locator('body').innerText({ timeout: 5000 });
                                 const html = await page.content();
                                 if (bank.dedicatedPage) {
@@ -1077,166 +1098,6 @@ async function saveLiqPay() {
 
 /* ─────────────── Crypto ─────────────── */
 
-const COINS = [
-    'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
-    'usd-coin', 'ripple', 'cardano', 'dogecoin', 'avalanche-2',
-    'tron', 'the-open-network', 'chainlink', 'polkadot', 'litecoin',
-    'dai', 'wrapped-bitcoin', 'uniswap', 'near',
-    'aptos', 'arbitrum', 'optimism', 'sui', 'stellar'
-];
-
-const CC_SYMBOL = {
-    'bitcoin':          'BTC',
-    'ethereum':         'ETH',
-    'tether':           'USDT',
-    'binancecoin':      'BNB',
-    'solana':           'SOL',
-    'usd-coin':         'USDC',
-    'ripple':           'XRP',
-    'cardano':          'ADA',
-    'dogecoin':         'DOGE',
-    'avalanche-2':      'AVAX',
-    'tron':             'TRX',
-    'the-open-network': 'TON',
-    'chainlink':        'LINK',
-    'polkadot':         'DOT',
-    'litecoin':         'LTC',
-    'dai':              'DAI',
-    'wrapped-bitcoin':  'WBTC',
-    'uniswap':          'UNI',
-    'near':             'NEAR',
-    'aptos':            'APT',
-    'arbitrum':         'ARB',
-    'optimism':         'OP',
-    'sui':              'SUI',
-    'stellar':          'XLM'
-};
-
-async function fetchDeepHistory(ccSymbol, existingHistory = {}) {
-    const knownDates = Object.keys(existingHistory).sort();
-    const oldestKnown = knownDates[0] || null;
-
-    const result = {};
-    let toTs = Math.floor(Date.now() / 1000);
-    const stopTs = oldestKnown
-        ? Math.floor(new Date(oldestKnown).getTime() / 1000)
-        : 0;
-
-    const MAX_PAGES = 8;
-
-    for (let page = 0; page < MAX_PAGES; page++) {
-        const url = `https://min-api.cryptocompare.com/data/v2/histoday` +
-                    `?fsym=${ccSymbol}&tsym=USD&limit=2000&toTs=${toTs}`;
-        let json;
-        try {
-            json = await fetchJson(url, { retries: 3, baseDelay: 5000 });
-        } catch (e) {
-            console.log(`    cc ${ccSymbol}: page ${page} → ${e.message}`);
-            break;
-        }
-        const data = json?.Data?.Data;
-        if (!Array.isArray(data) || data.length === 0) break;
-
-        let oldest = null;
-        for (const row of data) {
-            if (row.time <= 0) continue;
-            const iso = new Date(row.time * 1000).toISOString().slice(0, 10);
-            const price = row.close;
-            if (price > 0) {
-                result[iso] = price;
-                if (!oldest || row.time < oldest.time) oldest = row;
-            }
-        }
-
-        if (!oldest) break;
-        if (stopTs && oldest.time <= stopTs) break;
-        if (data.length < 2000) break;
-
-        toTs = oldest.time - 1;
-        await new Promise(r => setTimeout(r, 400));
-    }
-
-    return result;
-}
-
-async function saveCrypto() {
-    const existing = await readJson('crypto');
-    const existingMap = {};
-    (existing?.data?.coins || []).forEach(c => { existingMap[c.id] = c; });
-
-    const today = isoToday();
-    const historyFresh = existing?.historyDate === today;
-
-    const marketsUrl =
-        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd` +
-        `&ids=${COINS.join(',')}&sparkline=true&price_change_percentage=24h`;
-
-    const markets = await fetchJson(marketsUrl);
-    if (!Array.isArray(markets) || markets.length === 0) {
-        throw new Error('markets response empty');
-    }
-
-    const coins = markets.map(m => {
-        const sparkline = m.sparkline_in_7d?.price || [];
-        const daily = {};
-        const now = Date.now();
-        sparkline.forEach((price, i) => {
-            const hoursAgo = sparkline.length - 1 - i;
-            const iso = new Date(now - hoursAgo * 3600000).toISOString().slice(0, 10);
-            if (!daily[iso]) daily[iso] = [];
-            daily[iso].push(price);
-        });
-
-        const history = {};
-        Object.keys(daily).forEach(iso => {
-            const arr = daily[iso];
-            history[iso] = arr.reduce((a, b) => a + b, 0) / arr.length;
-        });
-
-        const prev = existingMap[m.id]?.history || {};
-        const merged = { ...prev, ...history };
-
-        return {
-            id: m.id,
-            symbol: (m.symbol || '').toUpperCase(),
-            name: m.name,
-            image: m.image || existingMap[m.id]?.image || null,
-            price: m.current_price,
-            change24h: m.price_change_percentage_24h || 0,
-            history: merged
-        };
-    });
-
-    console.log(`crypto  : ${coins.length} coins, prices updated`);
-
-    if (historyFresh) {
-        console.log('crypto  : deep history already refreshed today, skipping');
-    } else {
-        for (const coin of coins) {
-            const cc = CC_SYMBOL[coin.id];
-            if (!cc) {
-                console.log(`  ${coin.symbol.padEnd(6)}: no CC mapping, keeping ${Object.keys(coin.history).length} pts`);
-                continue;
-            }
-            const before = Object.keys(coin.history).length;
-            try {
-                const deep = await fetchDeepHistory(cc, coin.history);
-                const deepCount = Object.keys(deep).length;
-                coin.history = { ...coin.history, ...deep };
-                const after = Object.keys(coin.history).length;
-                const first = Object.keys(coin.history).sort()[0] || '—';
-                console.log(`  ${coin.symbol.padEnd(6)}: ${before} → ${after} pts (deep ${deepCount}, first ${first})`);
-            } catch (e) {
-                console.log(`  ${coin.symbol.padEnd(6)}: ${e.message}`);
-            }
-            await new Promise(r => setTimeout(r, 600));
-        }
-    }
-
-    await writeJson('crypto', { coins }, { historyDate: today });
-    console.log(`crypto  : saved ${coins.length} coins`);
-}
-
 /* ─────────────── Run ─────────────── */
 
 const mode = process.env.NBU_FETCH_MODE || 'all';
@@ -1269,7 +1130,8 @@ if (mode === 'banks') {
     });
     await saveOfficialBanks().catch(e => console.error('ПОМИЛКА банки: ' + e.message));
     await saveNBUHistory().catch(e => console.error('ПОМИЛКА історія НБУ: ' + e.message));
-    await saveCrypto().catch(e => console.error('ПОМИЛКА криптовалюти: ' + e.message));
+    await import('./fetch-core.mjs').catch(e => console.error('ПОМИЛКА поточні курси: ' + e.message));
+    await import('./fetch-crypto-history.mjs').catch(e => console.error('ПОМИЛКА історія криптовалют: ' + e.message));
 } else {
     throw new Error(`Невідомий режим: ${mode}`);
 }
