@@ -1,0 +1,700 @@
+{
+  "checkedAt": "2026-11-26T01:41:12.909978+00:00",
+  "coins": {
+    "bitcoin": {
+      "usd": {
+        "first": "2013-10-06",
+        "last": "2026-11-26",
+        "days": 4788,
+        "missingInside": 12
+      },
+      "archives": {
+        "binance:BTCUSDT": {
+          "quote": "USDT",
+          "first": "2017-08-17",
+          "last": "2026-11-25",
+          "days": 3388,
+          "missingInside": 0
+        },
+        "coinbase:BTC-USD": {
+          "quote": "USD",
+          "first": "2015-07-20",
+          "last": "2026-11-25",
+          "days": 4147,
+          "missingInside": 0
+        },
+        "kraken:XXBTZUSD": {
+          "quote": "USD",
+          "first": "2013-10-06",
+          "last": "2026-11-25",
+          "days": 4787,
+          "missingInside": 12
+        }
+      }
+    },
+    "ethereum": {
+      "usd": {
+        "first": "2015-08-07",
+        "last": "2026-11-26",
+        "days": 4125,
+        "missingInside": 5
+      },
+      "archives": {
+        "binance:ETHUSDT": {
+          "quote": "USDT",
+          "first": "2017-08-17",
+          "last": "2026-11-25",
+          "days": 3388,
+          "missingInside": 0
+        },
+        "coinbase:ETH-USD": {
+          "quote": "USD",
+          "first": "2016-05-18",
+          "last": "2026-11-25",
+          "days": 3842,
+          "missingInside": 2
+        },
+        "kraken:XETHZUSD": {
+          "quote": "USD",
+          "first": "2015-08-07",
+          "last": "2026-11-25",
+          "days": 4123,
+          "missingInside": 6
+        }
+      }
+    },
+    "tether": {
+      "usd": {
+        "first": "2017-03-29",
+        "last": "2026-11-26",
+        "days": 3530,
+        "missingInside": 0
+      },
+      "archives": {
+        "coinbase:USDT-USD": {
+          "quote": "USD",
+          "first": "2021-05-04",
+          "last": "2026-11-25",
+          "days": 2032,
+          "missingInside": 0
+        },
+        "kraken:USDTZUSD": {
+          "quote": "USD",
+          "first": "2017-03-29",
+          "last": "2026-11-25",
+          "days": 3529,
+          "missingInside": 0
+        }
+      }
+    },
+    "binancecoin": {
+      "usd": {
+        "first": "2025-04-22",
+        "last": "2026-11-26",
+        "days": 584,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:BNBUSDT": {
+          "quote": "USDT",
+          "first": "2017-11-06",
+          "last": "2026-11-25",
+          "days": 3307,
+          "missingInside": 0
+        },
+        "coinbase:BNB-USD": {
+          "quote": "USD",
+          "first": "2025-10-22",
+          "last": "2026-11-25",
+          "days": 400,
+          "missingInside": 0
+        },
+        "kraken:BNBUSD": {
+          "quote": "USD",
+          "first": "2025-04-22",
+          "last": "2026-11-25",
+          "days": 583,
+          "missingInside": 0
+        }
+      }
+    },
+    "usd-coin": {
+      "usd": {
+        "first": "2020-01-08",
+        "last": "2026-11-26",
+        "days": 2515,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:USDCUSDT": {
+          "quote": "USDT",
+          "first": "2018-12-15",
+          "last": "2026-11-25",
+          "days": 2738,
+          "missingInside": 165
+        },
+        "kraken:USDCUSD": {
+          "quote": "USD",
+          "first": "2020-01-08",
+          "last": "2026-11-25",
+          "days": 2514,
+          "missingInside": 0
+        }
+      }
+    },
+    "ripple": {
+      "usd": {
+        "first": "2017-05-18",
+        "last": "2026-11-26",
+        "days": 3479,
+        "missingInside": 1
+      },
+      "archives": {
+        "binance:XRPUSDT": {
+          "quote": "USDT",
+          "first": "2018-05-04",
+          "last": "2026-11-25",
+          "days": 3128,
+          "missingInside": 0
+        },
+        "coinbase:XRP-USD": {
+          "quote": "USD",
+          "first": "2019-02-26",
+          "last": "2026-11-25",
+          "days": 2189,
+          "missingInside": 641
+        },
+        "kraken:XXRPZUSD": {
+          "quote": "USD",
+          "first": "2017-05-18",
+          "last": "2026-11-25",
+          "days": 3478,
+          "missingInside": 1
+        }
+      }
+    },
+    "solana": {
+      "usd": {
+        "first": "2021-06-17",
+        "last": "2026-11-26",
+        "days": 1989,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:SOLUSDT": {
+          "quote": "USDT",
+          "first": "2020-08-11",
+          "last": "2026-11-25",
+          "days": 2298,
+          "missingInside": 0
+        },
+        "coinbase:SOL-USD": {
+          "quote": "USD",
+          "first": "2021-06-17",
+          "last": "2026-11-25",
+          "days": 1988,
+          "missingInside": 0
+        },
+        "kraken:SOLUSD": {
+          "quote": "USD",
+          "first": "2021-06-17",
+          "last": "2026-11-25",
+          "days": 1988,
+          "missingInside": 0
+        }
+      }
+    },
+    "tron": {
+      "usd": {
+        "first": "2020-03-05",
+        "last": "2026-11-26",
+        "days": 2458,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:TRXUSDT": {
+          "quote": "USDT",
+          "first": "2018-06-11",
+          "last": "2026-11-25",
+          "days": 3090,
+          "missingInside": 0
+        },
+        "kraken:TRXUSD": {
+          "quote": "USD",
+          "first": "2020-03-05",
+          "last": "2026-11-25",
+          "days": 2457,
+          "missingInside": 0
+        }
+      }
+    },
+    "dogecoin": {
+      "usd": {
+        "first": "2019-12-19",
+        "last": "2026-11-26",
+        "days": 2535,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:DOGEUSDT": {
+          "quote": "USDT",
+          "first": "2019-07-05",
+          "last": "2026-11-25",
+          "days": 2701,
+          "missingInside": 0
+        },
+        "coinbase:DOGE-USD": {
+          "quote": "USD",
+          "first": "2021-06-03",
+          "last": "2026-11-25",
+          "days": 2002,
+          "missingInside": 0
+        },
+        "kraken:XDGUSD": {
+          "quote": "USD",
+          "first": "2019-12-19",
+          "last": "2026-11-25",
+          "days": 2534,
+          "missingInside": 0
+        }
+      }
+    },
+    "wrapped-bitcoin": {
+      "usd": {
+        "first": "2021-08-03",
+        "last": "2026-11-26",
+        "days": 1942,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:WBTCUSDT": {
+          "quote": "USDT",
+          "first": "2023-04-28",
+          "last": "2026-11-25",
+          "days": 1308,
+          "missingInside": 0
+        },
+        "kraken:WBTCUSD": {
+          "quote": "USD",
+          "first": "2021-08-03",
+          "last": "2026-11-25",
+          "days": 1941,
+          "missingInside": 0
+        }
+      }
+    },
+    "chainlink": {
+      "usd": {
+        "first": "2019-06-27",
+        "last": "2026-11-26",
+        "days": 2710,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:LINKUSDT": {
+          "quote": "USDT",
+          "first": "2019-01-16",
+          "last": "2026-11-25",
+          "days": 2871,
+          "missingInside": 0
+        },
+        "coinbase:LINK-USD": {
+          "quote": "USD",
+          "first": "2019-06-27",
+          "last": "2026-11-25",
+          "days": 2709,
+          "missingInside": 0
+        },
+        "kraken:LINKUSD": {
+          "quote": "USD",
+          "first": "2019-09-25",
+          "last": "2026-11-25",
+          "days": 2619,
+          "missingInside": 0
+        }
+      }
+    },
+    "cardano": {
+      "usd": {
+        "first": "2018-09-28",
+        "last": "2026-11-26",
+        "days": 2982,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:ADAUSDT": {
+          "quote": "USDT",
+          "first": "2018-04-17",
+          "last": "2026-11-25",
+          "days": 3145,
+          "missingInside": 0
+        },
+        "coinbase:ADA-USD": {
+          "quote": "USD",
+          "first": "2021-03-18",
+          "last": "2026-11-25",
+          "days": 2079,
+          "missingInside": 0
+        },
+        "kraken:ADAUSD": {
+          "quote": "USD",
+          "first": "2018-09-28",
+          "last": "2026-11-25",
+          "days": 2981,
+          "missingInside": 0
+        }
+      }
+    },
+    "stellar": {
+      "usd": {
+        "first": "2017-01-17",
+        "last": "2026-11-26",
+        "days": 3420,
+        "missingInside": 181
+      },
+      "archives": {
+        "binance:XLMUSDT": {
+          "quote": "USDT",
+          "first": "2018-05-31",
+          "last": "2026-11-25",
+          "days": 3101,
+          "missingInside": 0
+        },
+        "coinbase:XLM-USD": {
+          "quote": "USD",
+          "first": "2019-03-14",
+          "last": "2026-11-25",
+          "days": 2814,
+          "missingInside": 0
+        },
+        "kraken:XXLMZUSD": {
+          "quote": "USD",
+          "first": "2017-01-17",
+          "last": "2026-11-25",
+          "days": 3419,
+          "missingInside": 181
+        }
+      }
+    },
+    "dai": {
+      "usd": {
+        "first": "2019-09-25",
+        "last": "2026-11-26",
+        "days": 2620,
+        "missingInside": 0
+      },
+      "archives": {
+        "kraken:DAIUSD": {
+          "quote": "USD",
+          "first": "2019-09-25",
+          "last": "2026-11-25",
+          "days": 2619,
+          "missingInside": 0
+        }
+      }
+    },
+    "near": {
+      "usd": {
+        "first": "2022-06-16",
+        "last": "2026-11-26",
+        "days": 1625,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:NEARUSDT": {
+          "quote": "USDT",
+          "first": "2020-10-14",
+          "last": "2026-11-25",
+          "days": 2234,
+          "missingInside": 0
+        },
+        "coinbase:NEAR-USD": {
+          "quote": "USD",
+          "first": "2022-09-01",
+          "last": "2026-11-25",
+          "days": 1547,
+          "missingInside": 0
+        },
+        "kraken:NEARUSD": {
+          "quote": "USD",
+          "first": "2022-06-16",
+          "last": "2026-11-25",
+          "days": 1624,
+          "missingInside": 0
+        }
+      }
+    },
+    "litecoin": {
+      "usd": {
+        "first": "2013-10-24",
+        "last": "2026-11-26",
+        "days": 4597,
+        "missingInside": 185
+      },
+      "archives": {
+        "binance:LTCUSDT": {
+          "quote": "USDT",
+          "first": "2017-12-13",
+          "last": "2026-11-25",
+          "days": 3270,
+          "missingInside": 0
+        },
+        "coinbase:LTC-USD": {
+          "quote": "USD",
+          "first": "2016-08-17",
+          "last": "2026-11-25",
+          "days": 3752,
+          "missingInside": 1
+        },
+        "kraken:XLTCZUSD": {
+          "quote": "USD",
+          "first": "2013-10-24",
+          "last": "2026-11-25",
+          "days": 4594,
+          "missingInside": 187
+        }
+      }
+    },
+    "avalanche-2": {
+      "usd": {
+        "first": "2021-09-30",
+        "last": "2026-11-26",
+        "days": 1884,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:AVAXUSDT": {
+          "quote": "USDT",
+          "first": "2020-09-22",
+          "last": "2026-11-25",
+          "days": 2256,
+          "missingInside": 0
+        },
+        "coinbase:AVAX-USD": {
+          "quote": "USD",
+          "first": "2021-09-30",
+          "last": "2026-11-25",
+          "days": 1883,
+          "missingInside": 0
+        },
+        "kraken:AVAXUSD": {
+          "quote": "USD",
+          "first": "2021-12-21",
+          "last": "2026-11-25",
+          "days": 1801,
+          "missingInside": 0
+        }
+      }
+    },
+    "uniswap": {
+      "usd": {
+        "first": "2020-09-17",
+        "last": "2026-11-26",
+        "days": 2262,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:UNIUSDT": {
+          "quote": "USDT",
+          "first": "2020-09-17",
+          "last": "2026-11-25",
+          "days": 2261,
+          "missingInside": 0
+        },
+        "coinbase:UNI-USD": {
+          "quote": "USD",
+          "first": "2020-09-17",
+          "last": "2026-11-25",
+          "days": 2261,
+          "missingInside": 0
+        },
+        "kraken:UNIUSD": {
+          "quote": "USD",
+          "first": "2020-10-15",
+          "last": "2026-11-25",
+          "days": 2233,
+          "missingInside": 0
+        }
+      }
+    },
+    "sui": {
+      "usd": {
+        "first": "2023-05-03",
+        "last": "2026-11-26",
+        "days": 1304,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:SUIUSDT": {
+          "quote": "USDT",
+          "first": "2023-05-03",
+          "last": "2026-11-25",
+          "days": 1303,
+          "missingInside": 0
+        },
+        "coinbase:SUI-USD": {
+          "quote": "USD",
+          "first": "2023-05-18",
+          "last": "2026-11-25",
+          "days": 1288,
+          "missingInside": 0
+        },
+        "kraken:SUIUSD": {
+          "quote": "USD",
+          "first": "2023-05-03",
+          "last": "2026-11-25",
+          "days": 1303,
+          "missingInside": 0
+        }
+      }
+    },
+    "the-open-network": {
+      "usd": {
+        "first": "2024-10-11",
+        "last": "2026-11-26",
+        "days": 777,
+        "missingInside": 0
+      },
+      "archives": {
+        "coinbase:TON-USD": {
+          "quote": "USD",
+          "first": "2025-11-18",
+          "last": "2026-11-25",
+          "days": 373,
+          "missingInside": 0
+        },
+        "kraken:TONUSD": {
+          "quote": "USD",
+          "first": "2024-10-11",
+          "last": "2026-11-25",
+          "days": 776,
+          "missingInside": 0
+        }
+      }
+    },
+    "polkadot": {
+      "usd": {
+        "first": "2020-08-18",
+        "last": "2026-11-26",
+        "days": 2292,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:DOTUSDT": {
+          "quote": "USDT",
+          "first": "2020-08-18",
+          "last": "2026-11-25",
+          "days": 2291,
+          "missingInside": 0
+        },
+        "coinbase:DOT-USD": {
+          "quote": "USD",
+          "first": "2021-06-16",
+          "last": "2026-11-25",
+          "days": 1989,
+          "missingInside": 0
+        },
+        "kraken:DOTUSD": {
+          "quote": "USD",
+          "first": "2020-08-18",
+          "last": "2026-11-25",
+          "days": 2291,
+          "missingInside": 0
+        }
+      }
+    },
+    "arbitrum": {
+      "usd": {
+        "first": "2023-03-23",
+        "last": "2026-11-26",
+        "days": 1345,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:ARBUSDT": {
+          "quote": "USDT",
+          "first": "2023-03-23",
+          "last": "2026-11-25",
+          "days": 1344,
+          "missingInside": 0
+        },
+        "coinbase:ARB-USD": {
+          "quote": "USD",
+          "first": "2023-03-23",
+          "last": "2026-11-25",
+          "days": 1344,
+          "missingInside": 0
+        },
+        "kraken:ARBUSD": {
+          "quote": "USD",
+          "first": "2023-03-23",
+          "last": "2026-11-25",
+          "days": 1344,
+          "missingInside": 0
+        }
+      }
+    },
+    "aptos": {
+      "usd": {
+        "first": "2022-10-19",
+        "last": "2026-11-26",
+        "days": 1500,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:APTUSDT": {
+          "quote": "USDT",
+          "first": "2022-10-19",
+          "last": "2026-11-25",
+          "days": 1499,
+          "missingInside": 0
+        },
+        "coinbase:APT-USD": {
+          "quote": "USD",
+          "first": "2022-10-19",
+          "last": "2026-11-25",
+          "days": 1499,
+          "missingInside": 0
+        },
+        "kraken:APTUSD": {
+          "quote": "USD",
+          "first": "2022-10-19",
+          "last": "2026-11-25",
+          "days": 1499,
+          "missingInside": 0
+        }
+      }
+    },
+    "optimism": {
+      "usd": {
+        "first": "2022-06-01",
+        "last": "2026-11-26",
+        "days": 1640,
+        "missingInside": 0
+      },
+      "archives": {
+        "binance:OPUSDT": {
+          "quote": "USDT",
+          "first": "2022-06-01",
+          "last": "2026-11-25",
+          "days": 1639,
+          "missingInside": 0
+        },
+        "coinbase:OP-USD": {
+          "quote": "USD",
+          "first": "2022-06-01",
+          "last": "2026-11-25",
+          "days": 1639,
+          "missingInside": 0
+        },
+        "kraken:OPUSD": {
+          "quote": "USD",
+          "first": "2023-09-29",
+          "last": "2026-11-25",
+          "days": 1154,
+          "missingInside": 0
+        }
+      }
+    }
+  }
+}
