@@ -7,9 +7,9 @@ on:
         type: string
         default: "coinbase,kraken,binance,bybit"
       backfill_pages:
-        description: "Older windows per pair (1–4)"
+        description: "Older windows per pair (1–12; use coinbase only for long USD backfill)"
         type: choice
-        options: ["1", "2", "3", "4"]
+        options: ["1", "2", "3", "4", "8", "12"]
         default: "2"
   schedule:
     - cron: "23 3 * * *"
