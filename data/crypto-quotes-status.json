@@ -1,1 +1,1 @@
-{"runId":"45764856563","checkedAt":"2026-11-26T05:56:59.610Z","updated":24,"total":24,"sources":{"coinbase":{"quotes":20},"kraken":{"quotes":24},"binance":{"quotes":21},"bybit":{"error":"HTTP 403"}},"errors":{}}
+{"runId":"45775510077","checkedAt":"2026-11-26T07:28:10.486Z","updated":24,"total":24,"sources":{"coinbase":{"quotes":20},"kraken":{"quotes":24},"binance":{"quotes":21},"bybit":{"error":"HTTP 403"}},"errors":{}}
