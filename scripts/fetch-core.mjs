@@ -12,25 +12,7 @@ const tasks=[
 ];
 const failures=[];
 for(const [name,url,check] of tasks){try{const result=await get(url);if(!check(result))throw new Error('wrong response shape');await save(name,result,{source:new URL(url).hostname});console.log(`${name}: ${result.length} quotes`);}catch(e){console.warn(`${name}: ${e.message}; previous data preserved`);failures.push(`${name}: ${e.message}`);}}
-try{
- const previous=await read('crypto');
- const ids=['bitcoin','ethereum','tether','binancecoin','solana','usd-coin','ripple','cardano','dogecoin','avalanche-2','tron','the-open-network','chainlink','polkadot','litecoin','dai','wrapped-bitcoin','uniswap','near','aptos','arbitrum','optimism','sui','stellar'];
- const result=await get(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}&sparkline=false&price_change_percentage=24h`);
- if(!Array.isArray(result)||!result.length)throw new Error('empty market result');
- const old=new Map((previous?.data?.coins||[]).map(c=>[c.id,c]));
- const seen=new Set();
- const today=new Date().toISOString().slice(0,10);
- const coins=result.filter(c=>ids.includes(c.id)&&typeof c.current_price==='number'&&Number.isFinite(c.current_price)&&c.current_price>0).map(c=>{
-   seen.add(c.id);const prev=old.get(c.id)||{};const history={...(prev.history||{})};history[today]=c.current_price;
-   return {...prev,id:c.id,symbol:(c.symbol||'').toUpperCase(),name:c.name,image:c.image||prev.image||null,price:c.current_price,change24h:Number.isFinite(c.price_change_percentage_24h)?c.price_change_percentage_24h:null,asOf:c.last_updated||null,history};
- });
- if(!coins.length)throw new Error('no valid prices');
- const freshCount=coins.length;
- for(const [id,coin] of old)if(!seen.has(id))coins.push({...coin,asOf:coin.asOf||previous.updatedAt||null});
- await save('crypto',{coins},{historyDate:previous?.historyDate||null,historyCheckedAt:previous?.historyCheckedAt||null,source:'coingecko.com'});
- if(freshCount<ids.length)failures.push(`crypto: partial ${freshCount}/${ids.length}`);
- console.log(`crypto: ${freshCount}/${ids.length} updated; ${coins.length-freshCount} preserved; deep history retained`);
-}catch(e){console.warn(`crypto: ${e.message}; previous history retained`);failures.push(`crypto: ${e.message}`);}
+try{const {refreshCrypto}=await import('./fetch-crypto-quotes.mjs');const r=await refreshCrypto();if(r.updated<r.total)failures.push(`crypto: partial ${r.updated}/${r.total}`);}catch(e){console.warn(`crypto: ${e.message}; previous data preserved`);failures.push(`crypto: ${e.message}`);}
 await fs.writeFile(path.join(DIR,'core-status.json'),JSON.stringify({checkedAt:new Date().toISOString(),failures,ok:tasks.length+1-failures.length}));
 console.log('Quick refresh finished',failures.length?'with warnings':'successfully');
 if(failures.length===tasks.length+1)process.exitCode=1;
