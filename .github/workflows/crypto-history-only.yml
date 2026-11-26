@@ -1,0 +1,69 @@
+name: NBU Rate — Crypto exchange history only
+on:
+  workflow_dispatch:
+    inputs:
+      providers:
+        description: "coinbase,kraken,binance,bybit (comma-separated)"
+        type: string
+        default: "coinbase,kraken,binance,bybit"
+      backfill_pages:
+        description: "Older windows per pair (1–4)"
+        type: choice
+        options: ["1", "2", "3", "4"]
+        default: "2"
+  schedule:
+    - cron: "23 3 * * *"
+permissions:
+  contents: write
+concurrency:
+  group: nbu-data-writer
+  cancel-in-progress: false
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch daily spot history (USD / USDT)
+        id: history
+        continue-on-error: true
+        env:
+          NBU_CRYPTO_PROVIDERS: ${{ inputs.providers || 'coinbase,kraken,binance,bybit' }}
+          NBU_CRYPTO_BACKFILL_PAGES: ${{ inputs.backfill_pages || '2' }}
+        run: node scripts/fetch-crypto-history.mjs
+      - name: Summary
+        if: always()
+        env:
+          HISTORY_STEP: ${{ steps.history.outcome }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          let s;try{s=JSON.parse(fs.readFileSync('data/crypto-history-status.json','utf8'));}catch{}
+          const lines=['## Crypto exchange history — '+process.env.HISTORY_STEP];
+          if(s?.runId===process.env.GITHUB_RUN_ID){
+            lines.push(`- ${s.updated}/${s.total} assets; ${s.filled} missing dates filled`);
+            lines.push(`- USD assets: ${s.usdUpdated || 0}`);
+            for(const [p,v] of Object.entries(s.sources||{}))lines.push(`- ${p}: ${v.error||`${v.updated} markets, ${v.received} candles (${v.quote})`}`);
+            for(const [id,v] of Object.entries(s.coins||{}))lines.push(`- ${id}: ${v.error||`${v.received} received, ${v.added} added, ${v.days} total (${v.first} — ${v.last})`}`);
+          }else lines.push('- No current report; inspect the fetch step');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
+          NODE
+      - name: Commit current history and report
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'data: crypto exchange history'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Report failure
+        if: steps.history.outcome != 'success'
+        run: exit 1
