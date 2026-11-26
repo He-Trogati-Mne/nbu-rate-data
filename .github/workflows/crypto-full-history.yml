@@ -25,13 +25,13 @@ jobs:
         if: inputs.source != 'binance'
         continue-on-error: true
         timeout-minutes: 20
-        run: python3 scripts/import-crypto-archives.py --kraken-remote
+        run: python3 -u scripts/import-crypto-archives.py --kraken-remote
       - name: Binance full monthly USDT archives (resumable)
         id: binance
         if: inputs.source != 'kraken'
         continue-on-error: true
         timeout-minutes: 40
-        run: python3 scripts/import-crypto-archives.py --binance-all
+        run: python3 -u scripts/import-crypto-archives.py --binance-all
       - name: Coverage report and publish partial progress
         if: always()
         run: |
