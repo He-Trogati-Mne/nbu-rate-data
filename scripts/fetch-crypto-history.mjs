@@ -4,7 +4,7 @@ const DIR='data', file=DIR+'/crypto.json', root=DIR+'/crypto-history';
 const checkedAt=new Date().toISOString(), today=dayStart(Date.now()), floor=Date.UTC(2010,0,1);
 const chosen=process.env.NBU_CRYPTO_PROVIDERS?process.env.NBU_CRYPTO_PROVIDERS.split(',').filter(p=>PROVIDERS.includes(p)):PROVIDERS;
 if(!chosen.length)throw Error('No valid providers');
-const pages=Math.min(4,Math.max(1,Number(process.env.NBU_CRYPTO_BACKFILL_PAGES)||2));
+const pages=Math.min(12,Math.max(1,Math.floor(Number(process.env.NBU_CRYPTO_BACKFILL_PAGES)||2)));
 const get=client(), date=t=>new Date(t).toISOString().slice(0,10);
 async function read(p,f){try{return JSON.parse(await fs.readFile(p,'utf8'));}catch(e){if(e.code==='ENOENT')return f;throw e;}}
 async function save(p,x){await fs.writeFile(p+'.tmp',JSON.stringify(x));await fs.rename(p+'.tmp',p);}
