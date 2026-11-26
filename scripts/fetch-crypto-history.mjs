@@ -1,50 +1,47 @@
-/** Daily UTC close history, separate OHLCV, resumable backfill. Never replace live quote timestamps. */
 import fs from 'node:fs/promises';
-const DIR='data', file=DIR+'/crypto.json', histDir=DIR+'/crypto-history';
-await fs.mkdir(histDir,{recursive:true});
-async function read(p,f){try{return JSON.parse(await fs.readFile(p,'utf8'));}catch{return f;}}
+import {DAY,PROVIDERS,QUOTE,LIMIT,asset,client,markets,candles,dayStart,positive} from './crypto-exchanges.mjs';
+const DIR='data', file=DIR+'/crypto.json', root=DIR+'/crypto-history';
+const checkedAt=new Date().toISOString(), today=dayStart(Date.now()), floor=Date.UTC(2010,0,1);
+const chosen=process.env.NBU_CRYPTO_PROVIDERS?process.env.NBU_CRYPTO_PROVIDERS.split(',').filter(p=>PROVIDERS.includes(p)):PROVIDERS;
+if(!chosen.length)throw Error('No valid providers');
+const pages=Math.min(4,Math.max(1,Number(process.env.NBU_CRYPTO_BACKFILL_PAGES)||2));
+const get=client(), date=t=>new Date(t).toISOString().slice(0,10);
+async function read(p,f){try{return JSON.parse(await fs.readFile(p,'utf8'));}catch(e){if(e.code==='ENOENT')return f;throw e;}}
 async function save(p,x){await fs.writeFile(p+'.tmp',JSON.stringify(x));await fs.rename(p+'.tmp',p);}
-const previous=await read(file,null);if(!Array.isArray(previous?.data?.coins)||!previous.data.coins.length)throw Error('Run fetch-core.mjs first');
-const stateFile=DIR+'/crypto-history-status.json', oldState=await read(stateFile,{coins:{}});
-const checkedAt=new Date().toISOString(),today=checkedAt.slice(0,10), day=86400;
-const state={...oldState.coins}, errors={};let updated=0,limited=false;
-const symbols={'bitcoin':'BTC','ethereum':'ETH','tether':'USDT','binancecoin':'BNB','solana':'SOL','usd-coin':'USDC','ripple':'XRP','cardano':'ADA','dogecoin':'DOGE','avalanche-2':'AVAX','tron':'TRX','the-open-network':'TON','chainlink':'LINK','polkadot':'DOT','litecoin':'LTC','dai':'DAI','wrapped-bitcoin':'WBTC','uniswap':'UNI','near':'NEAR','aptos':'APT','arbitrum':'ARB','optimism':'OP','sui':'SUI','stellar':'XLM'};
-const source='CryptoCompare / CoinDesk CCCAGG USD';
-const pause=ms=>new Promise(r=>setTimeout(r,ms));
-const positive=x=>typeof x==='number'&&Number.isFinite(x)&&x>0;
-async function page(symbol,end,limit){
- const url=new URL('https://min-api.cryptocompare.com/data/v2/histoday');
- url.search=new URLSearchParams({fsym:symbol,tsym:'USD',e:'CCCAGG',limit:String(limit),toTs:String(end)});
- const headers={'Accept':'application/json','User-Agent':'NBU-Rate-Dataset/1.0'};if(process.env.CRYPTOCOMPARE_API_KEY)headers.Authorization='Apikey '+process.env.CRYPTOCOMPARE_API_KEY;
- const r=await fetch(url,{headers,signal:AbortSignal.timeout(20000)});
- if([401,403,429].includes(r.status)){limited=true;throw Error(`HTTP ${r.status}; stop provider requests`);}if(!r.ok)throw Error(`HTTP ${r.status}`);
- const x=await r.json();if(x.Response==='Error'||!Array.isArray(x?.Data?.Data)||!x.Data.Data.length){if(/rate limit|quota|api key|unauthoriz/i.test(x.Message||''))limited=true;throw Error(x.Message||'Empty history');}
- return x.Data.Data;
-}
-const coins=previous.data.coins.map(c=>({...c,history:{...c.history}}));
-for(const coin of coins){
- const sym=symbols[coin.id];if(!sym)continue;
- if(limited){errors[coin.id]='Provider limit; not requested';continue;}
- const prev=state[coin.id]||{}, p=histDir+'/'+sym+'.json', archive=await read(p,{data:{}}), series={...archive.data};
- let cursor=prev.nextToTs??Math.floor(Date.now()/1000), complete=!!prev.backfillComplete, count=0, pages=0;
- const ingest=rows=>{let oldest=null,n=0;for(const row of rows){if(!Number.isInteger(row.time)||row.time<=0||row.time%day!==0||row.time*1000>=Date.parse(today))continue;const dt=new Date(row.time*1000).toISOString().slice(0,10);if(!positive(row.close))continue;coin.history[dt]=row.close;series[dt]={close:row.close,...([row.open,row.high,row.low].every(positive)&&row.high>=Math.max(row.open,row.close)&&row.low<=Math.min(row.open,row.close)?{open:row.open,high:row.high,low:row.low}:{}),volumeBase:Number.isFinite(row.volumefrom)&&row.volumefrom>=0?row.volumefrom:null,volumeQuote:Number.isFinite(row.volumeto)&&row.volumeto>=0?row.volumeto:null};oldest=oldest===null?row.time:Math.min(oldest,row.time);n++;}count+=n;return {oldest,n};};
+const prev=await read(file,null);if(!Array.isArray(prev?.data?.coins)||!prev.data.coins.length)throw Error('Run core first (existing crypto.json required)');
+const coins=prev.data.coins.map(c=>({...c,history:{...c.history},historySources:{...c.historySources}}));
+const state=Object.fromEntries(coins.map(c=>[c.id,{checkedAt,providers:{},received:0,added:0}]));
+const errors={}, sources={};let filled=0,updated=0,usdUpdated=0;
+for(const p of chosen){const dir=root+'/'+p;await fs.mkdir(dir,{recursive:true});let catalog;
+ try{catalog=await markets(get,p);sources[p]={markets:catalog.size,received:0,updated:0,quote:QUOTE[p]};}catch(e){sources[p]={error:e.message,quote:QUOTE[p],updated:0};for(const c of coins)state[c.id].providers[p]={error:e.message};continue;}
+ for(const c of coins){const s=state[c.id],m=catalog.get(asset(c));if(!m){s.providers[p]={status:'not_listed'};continue;}
+ const name=m.key.replace(/[^a-zA-Z0-9_-]/g,'_');const path=dir+'/'+name+'.json';
+ let old;try{old=await read(path,{data:{}});}catch(e){s.providers[p]={error:'Cannot read archive: '+e.message};continue;}
+ const data={...old.data};let cursor=Number.isSafeInteger(old.backfillBefore)?Math.min(today,old.backfillBefore):today;let count=0,added=0,err=null;
+ const collected=new Map();
+ function absorb(rows){for(const r of rows){const d=date(r.t);const {t,...v}=r;data[d]=v;collected.set(d,v);count++;}}
  try{
-  // Refresh recent closed days, including gaps during a short outage.
-  const last=Object.keys(series).sort().at(-1), gap=last?Math.ceil((Date.parse(today)-Date.parse(last))/86400000):30;
-  ingest(await page(sym,Math.floor(Date.now()/1000),Math.min(2000,Math.max(14,gap+2))));
-  // Walk backwards independently of the oldest existing legacy snapshot. Limit work per run.
-  if(!complete){for(let i=0;i<3;i++){
-   await pause(500);const rows=await page(sym,cursor,2000);pages++;const {oldest,n}=ingest(rows);
-   if(!n){throw Error('No positive historical candles; backfill not confirmed');}
-   if(oldest===null||oldest>=cursor)throw Error('History cursor did not advance');
-   const next=oldest-1;cursor=next;
-   const earlierZeros=rows.some(r=>r.time<oldest&&r.close===0);
-   if(earlierZeros&&n<rows.length-1){complete=true;break;}
-  }}
- }catch(e){errors[coin.id]=e.message;console.warn(sym,e.message);}
- if(count){coin.historySource=source+'; legacy/snapshot days may remain';await save(p,{symbol:sym,id:coin.id,currency:'USD',source,interval:'1d',checkedAt,data:series});updated++;}
- state[coin.id]={checkedAt,nextToTs:cursor,backfillComplete:complete,pages,days:Object.keys(series).length,first:Object.keys(series).sort()[0]||null,last:Object.keys(series).sort().at(-1)||null,error:errors[coin.id]||null};
- console.log(sym,state[coin.id]);await pause(500);
+  if(p==='kraken'){absorb(await candles(get,p,m,today-719*DAY,today));}
+  else{
+   if(cursor<today)absorb(await candles(get,p,m,today-7*DAY,today));
+   for(let i=0;i<pages&&cursor>floor;i++){
+    const start=Math.max(floor,cursor-LIMIT[p]*DAY);const rows=await candles(get,p,m,start,cursor);absorb(rows);
+    cursor=start;
+   }
+  }
+ }catch(e){err=e.message;console.warn(p,c.id,err);}
+ if(count||(!err&&p!=='kraken'))await save(path,{...old,id:c.id,symbol:m.key,base:m.base,quote:m.quote,source:p,interval:'1d',checkedAt,backfillBefore:p==='kraken'?null:cursor,data});
+ if(QUOTE[p]==='USD')for(const [d,v] of Object.entries(data)){if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||d>=date(today)||!positive(v?.close))continue;if(!positive(c.history[d])){c.history[d]=v.close;c.historySources[d]=p+':'+m.key;added++;}}
+ s.received+=collected.size;s.added+=added;filled+=added;
+ sources[p].received+=collected.size;if(collected.size)sources[p].updated++;
+ s.providers[p]={pair:m.key,quote:m.quote,received:collected.size,added,days:Object.keys(data).length,backfillBefore:p==='kraken'?null:date(cursor),status:err?(collected.size?'partial':'error'):(collected.size?'updated':'no_new_candles'),error:err};
+ console.log(p,c.id,JSON.stringify(s.providers[p]));
+ }
 }
-if(updated)await save(file,{...previous,historyDate:today,historyCheckedAt:checkedAt,data:{...previous.data,coins}});
-await save(stateFile,{checkedAt,updated,total:coins.length,errors,coins:state});if(!updated)process.exitCode=1;
+for(const c of coins){const s=state[c.id],entries=Object.values(s.providers);if(s.received)updated++;else errors[c.id]=entries.map((v,i)=>v.error||v.status||'unknown').join('; ')||'No source';if(entries.some(v=>v.quote==='USD'&&v.received>0))usdUpdated++;
+ const dates=Object.keys(c.history).sort();s.days=dates.length;s.first=dates[0]||null;s.last=dates.at(-1)||null;s.status=s.received?'updated':'error';s.error=errors[c.id]||null;if(s.added)c.historySource='Legacy USD history; missing days filled with official USD spot closes (historySources)';
+}
+if(filled)await save(file,{...prev,historyDate:date(today),historyCheckedAt:checkedAt,data:{...prev.data,coins}});
+await save(DIR+'/crypto-history-status.json',{runId:process.env.GITHUB_RUN_ID||null,checkedAt,provider:chosen.join('+'),updated,usdUpdated,total:coins.length,filled,errors,coins:state,sources});
+console.log(`History: ${updated}/${coins.length} assets received candles; USD ${usdUpdated}; added ${filled}; errors ${Object.keys(errors).length}`);
+if(!updated)process.exitCode=1;
