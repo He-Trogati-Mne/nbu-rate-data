@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-25T15:53:01.067Z",
-  "runId": "45649347863",
+  "checkedAt": "2026-11-26T00:34:15.811Z",
+  "runId": "45729602610",
   "updated": 2,
   "refreshed": 2,
   "total": 6,
@@ -20,7 +20,7 @@
         "EUR",
         "USD"
       ],
-      "rateDate": "2026-11-25",
+      "rateDate": "2026-11-26",
       "rateType": "cash"
     },
     "pumb": {
@@ -44,8 +44,8 @@
     "alliance": {
       "status": "not_updated",
       "reason": "Сторінку завантажено, але курси не розпізнані",
-      "previousUpdatedAt": "2026-11-25T11:48:31.450Z",
-      "previousSource": "alb.ua"
+      "previousUpdatedAt": "2026-11-26T00:17:27.527Z",
+      "previousSource": "www.alb.ua"
     },
     "komin": {
       "status": "not_updated",
