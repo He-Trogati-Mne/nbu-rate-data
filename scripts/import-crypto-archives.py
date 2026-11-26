@@ -75,7 +75,7 @@ def main():
                 hist=coin.setdefault('history',{}); old=hist.get(date)
                 if not isinstance(old,(int,float)) or not math.isfinite(old) or old<=0:
                     hist[date]=data[date]['close'];coin.setdefault('historySources',{})[date]='kraken:'+obj['symbol'];filled+=1
-        if n: print(provider,base,'new archive days',n,flush=True)
+        if n and not (provider=='binance' and args.binance_all): print(provider,base,'new archive days',n,flush=True)
     def import_zip(z,provider):
         for member in z.namelist():
             name=pathlib.PurePosixPath(member).name.upper()
@@ -112,43 +112,65 @@ def main():
         state=load(statepath,{})
         if not isinstance(state,dict): raise ValueError('Invalid monthly state')
         complete=state.setdefault('completed',{})
-        if not indexes['binance']: errors.append('Binance: run exchange history once to discover pairs')
+        pairs=[(base,obj['symbol']) for base,(_,obj) in indexes['binance'].items()
+               if re.fullmatch(r'[A-Z0-9]+USDT',obj['symbol'])]
+        if not pairs: errors.append('Binance: run exchange history once to discover pairs')
         end=TODAY.year*12+TODAY.month-1
         start=2017*12+6
-        deadline=time.monotonic()+35*60
-        stop=False
-        for i in range(end-1,start-1,-1):
-            month=f'{i//12:04d}-{i%12+1:02d}'
-            for base,(p,obj) in indexes['binance'].items():
-                pair=obj['symbol']; key=pair+'/'+month
-                if not re.fullmatch(r'[A-Z0-9]+USDT',pair) or key in complete: continue
-                if time.monotonic()>deadline: stop=True;break
-                name=f'{pair}-1d-{month}'
-                url=f'https://data.binance.vision/data/spot/monthly/klines/{pair}/1d/{name}.zip'
-                try:
-                    with urlopen(Request(url,headers={'User-Agent':'NBU-Rate-Dataset/1.0'}),timeout=20) as r: payload=r.read(2_000_001)
-                    if len(payload)>2_000_000: raise ValueError('Unexpected oversized daily ZIP')
-                    with zipfile.ZipFile(io.BytesIO(payload)) as z:
-                        expected=name+'.csv'
-                        if expected not in z.namelist(): raise ValueError('Unexpected archive member')
-                        with z.open(expected) as f:
-                            rows=list(read_rows(f,'binance'))
-                        if not rows or any(not d.startswith(month+'-') for d,v in rows): raise ValueError('Invalid monthly candles')
-                        merge('binance',base,rows)
-                    files+=1;complete[key]='imported'
-                except HTTPError as e:
-                    if e.code==404:
-                        absent+=1
-                        if i<end-2: complete[key]='not_found'
-                    else:
-                        errors.append(f'{pair} {month}: HTTP {e.code}');stop=True;break
-                except (OSError,ValueError,zipfile.BadZipFile) as e:
-                    errors.append(f'{pair} {month}: {e}');stop=True;break
-                time.sleep(0.25)
+        tasks=[(base,pair,f'{i//12:04d}-{i%12+1:02d}',i)
+               for i in range(end-1,start-1,-1) for base,pair in pairs
+               if pair+'/'+f'{i//12:04d}-{i%12+1:02d}' not in complete]
+        started=time.monotonic(); deadline=started+30*60
+        stop=False; attempted=0; deferred=0; consecutive_failures=0
+        print(f'Binance: {len(pairs)} markets; {len(tasks)} pending archives; '
+              f'{len(complete)} previously recorded; 30-minute work budget',flush=True)
+        def checkpoint():
             flush();save(statepath,state)
+        for base,pair,month,i in tasks:
+            if time.monotonic()>deadline:
+                stop=True; print('Time budget reached; saving progress for next run',flush=True);break
+            attempted+=1; key=pair+'/'+month; name=f'{pair}-1d-{month}'
+            url=f'https://data.binance.vision/data/spot/monthly/klines/{pair}/1d/{name}.zip'
+            print(f'[{attempted}/{len(tasks)}] {pair} {month} ...',end=' ',flush=True)
+            before=added
+            try:
+                with urlopen(Request(url,headers={'User-Agent':'NBU-Rate-Dataset/1.0'}),timeout=15) as r: payload=r.read(2_000_001)
+                if len(payload)>2_000_000: raise ValueError('Unexpected oversized daily ZIP')
+                with zipfile.ZipFile(io.BytesIO(payload)) as z:
+                    expected=name+'.csv'
+                    if expected not in z.namelist(): raise ValueError('Unexpected archive member')
+                    with z.open(expected) as f: rows=list(read_rows(f,'binance'))
+                    if not rows or any(not d.startswith(month+'-') for d,v in rows): raise ValueError('Invalid monthly candles')
+                    merge('binance',base,rows)
+                files+=1;complete[key]='imported';consecutive_failures=0
+                print(f'OK: {len(rows)} candles, {added-before} new',flush=True)
+            except HTTPError as e:
+                if e.code==404:
+                    absent+=1; consecutive_failures=0
+                    if i<end-2: complete[key]='not_found'
+                    else: deferred+=1
+                    print('404: no archive'+(' (retry next run)' if i>=end-2 else ''),flush=True)
+                else:
+                    errors.append(f'{pair} {month}: HTTP {e.code}');consecutive_failures+=1
+                    print(f'HTTP {e.code}; left pending',flush=True)
+                    if e.code in (401,403,418,429,451):
+                        stop=True;print('Source denied access or rate limited; stopping without retry storm',flush=True)
+            except (OSError,ValueError,zipfile.BadZipFile) as e:
+                errors.append(f'{pair} {month}: {e}');consecutive_failures+=1
+                print(f'{type(e).__name__}: {e}; left pending',flush=True)
+            if consecutive_failures>=5:
+                stop=True;print('Five consecutive failures; stopping this run',flush=True)
+            if attempted%10==0 or stop:
+                checkpoint()
+                print(f'Checkpoint: {attempted}/{len(tasks)} checked; {files} ZIPs; '
+                      f'{absent} absent; {added} new candles; {len(errors)} errors; '
+                      f'{int(time.monotonic()-started)}s elapsed',flush=True)
             if stop: break
-        pending=sum(1 for i in range(start,end) for _,obj in indexes['binance'].values() if obj['symbol']+'/'+f'{i//12:04d}-{i%12+1:02d}' not in complete)
-        print('Binance archive checkpoint',len(complete),'pair-months; pending:',pending,'time limit or error:',stop,flush=True)
+            time.sleep(0.25)
+        checkpoint()
+        pending=sum(1 for i in range(start,end) for _,pair in pairs if pair+'/'+f'{i//12:04d}-{i%12+1:02d}' not in complete)
+        print('Binance archive checkpoint',len(complete),'pair-months; pending:',pending,
+              'checked:',attempted,'deferred:',deferred,'time limit or error:',stop,flush=True)
 
     if args.binance_months:
         end=dt.date.fromisoformat(args.end_month+'-01'); end_idx=end.year*12+end.month-1
