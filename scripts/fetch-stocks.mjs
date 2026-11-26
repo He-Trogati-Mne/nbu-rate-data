@@ -1,44 +1,56 @@
-/** Best-effort market snapshots + daily history, no fake quotes on API failure.
- * Yahoo chart endpoint is UNOFFICIAL and can respond 429; replace with a licensed provider for production.
- */
 import fs from 'node:fs/promises';
-import path from 'node:path';
-const DIR='data', FILE=path.join(DIR,'stocks.json');
+import { tickers } from './stock-catalog.mjs';
+const DIR='data', FILE=DIR+'/stocks.json', source='Yahoo Finance chart (unofficial, delayed)';
 await fs.mkdir(DIR,{recursive:true});
-let previous={data:{}};try{previous=JSON.parse(await fs.readFile(FILE,'utf8'));}catch{}
-const tickers=['KYIV','MHPC.L','FXPO.L','AST.WA','AAPL','MSFT','NVDA','GOOGL','TSLA','AMZN'];
-const data={...(previous.data||{})};
-const errors={};let updates=0;
+async function read(p, fallback){try{return JSON.parse(await fs.readFile(p,'utf8'));}catch{return fallback;}}
+async function save(p,x){await fs.writeFile(p+'.tmp',JSON.stringify(x));await fs.rename(p+'.tmp',p);}
+const previous=await read(FILE,{data:{}}), data={...previous.data};
+const errors={}, info={};let updates=0, limited=false;
+const now=new Date(), checkedAt=now.toISOString(), day=86400000;
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
-async function getYahoo(sym){
- for(const host of ['query1.finance.yahoo.com','query2.finance.yahoo.com']){
-  const u=`https://${host}/v8/finance/chart/${encodeURIComponent(sym)}?range=5y&interval=1d&events=history`;
-  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),12000);
-  try{const r=await fetch(u,{headers:{'User-Agent':'Mozilla/5.0 (compatible; NbuRateData/1.0)','Accept':'application/json'},signal:ac.signal});if(r.status===429||r.status>=500){await delay(400);continue;}if(!r.ok)throw Error(`HTTP ${r.status}`);
-    const body=await r.json();const x=body?.chart?.result?.[0];if(!x?.meta?.symbol||!Array.isArray(x.timestamp))throw Error('chart unavailable');return x;
-  }catch(e){errors[sym]=e.message;}finally{clearTimeout(tm);}
+const full=process.env.NBU_STOCK_BACKFILL==='1';
+function valid(n){return typeof n==='number'&&Number.isFinite(n)&&n>0;}
+async function getYahoo(sym,range){
+ const u=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=1d&events=history`;
+ for(let i=0;i<2;i++){
+  try{const r=await fetch(u,{headers:{'User-Agent':'NBU-Rate-Dataset/1.0','Accept':'application/json'},signal:AbortSignal.timeout(16000)});
+   if([401,403,429].includes(r.status)){limited=true;throw Error(`HTTP ${r.status}; access restricted, stopping`);}
+   if(r.status>=500&&i===0){await delay(1500);continue;}
+   if(!r.ok)throw Error(`HTTP ${r.status}`);
+   const body=await r.json(),x=body?.chart?.result?.[0];
+   if(x?.meta?.symbol?.toUpperCase()!==sym.toUpperCase()||!x.meta.currency||!Array.isArray(x.timestamp))throw Error('Invalid symbol/currency/history');
+   return x;
+  }catch(e){if(i===0&&!limited&&/fetch failed|timeout|aborted/i.test(e.message)){await delay(1000);continue;}throw e;}
  }
- return null;
 }
 for(const sym of tickers){
- const x=await getYahoo(sym);
- if(!x){errors[sym]||='no response';console.warn(sym,'unavailable:',errors[sym]);continue;}
- const priceHistory={...(data[sym]?.history||{})};const close=x.indicators?.quote?.[0]?.close||[];
- let lastPrice=null,lastTs=null;
- for(let i=0;i<x.timestamp.length;i++){
-  const price=Number(close[i]);const ts=Number(x.timestamp[i]);
-  if(!Number.isFinite(price)||price<=0||!Number.isFinite(ts))continue;
-  const iso=new Date(ts*1000).toISOString().slice(0,10);
-  priceHistory[iso]=Number(price.toFixed(6));if(!lastTs||ts>lastTs){lastTs=ts;lastPrice=price;}
- }
- if(!lastTs){errors[sym]='no valid historical candles';continue;}
- const prevClose=Number(x.meta.previousClose||x.meta.chartPreviousClose);
- const changePct=Number.isFinite(prevClose)&&prevClose>0?((lastPrice/prevClose)-1)*100:null;
- data[sym]={price:Number(lastPrice.toFixed(6)),currency:x.meta.currency||'USD',exchange:x.meta.exchangeName||'',asOf:new Date(lastTs*1000).toISOString(),changePct:changePct==null?null:Number(changePct.toFixed(3)),history:priceHistory,source:'Yahoo Finance chart (unofficial, delayed)'};
- updates++;console.log(sym,'saved',Object.keys(priceHistory).length,'days',data[sym].asOf);
- await delay(250);
+ if(limited){errors[sym]='Not requested: provider access limit';continue;}
+ const old=data[sym]||{};
+ const deep=full||!old.backfillAt||now-Date.parse(old.backfillAt)>30*day;
+ const range=deep?'max':'1mo';
+ try{
+  const x=await getYahoo(sym,range), q=x.indicators?.quote?.[0]||{}, bars=new Map();
+  if(old.currency&&old.currency!==x.meta.currency)throw Error('Currency changed; previous series preserved');
+  const tz=x.meta.exchangeTimezoneName||'UTC';
+  const formatter=new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'});
+  for(let i=0;i<x.timestamp.length;i++){
+   const ts=x.timestamp[i],p=q.close?.[i];if(!valid(ts)||!valid(p)||ts*1000>+now+300000)continue;
+   const dt=formatter.format(new Date(ts*1000));bars.set(dt,{ts,price:Number(p.toFixed(6)),open:q.open?.[i],high:q.high?.[i],low:q.low?.[i],volume:q.volume?.[i]});
+  }
+  const ordered=[...bars.entries()].sort((a,b)=>a[0].localeCompare(b[0]));if(!ordered.length)throw Error('No valid candles');
+  const [lastDate,last]=ordered.at(-1);if(old.asOf&&Date.parse(old.asOf)>last.ts*1000)throw Error('Source older than saved quote');
+  const history={...old.history};for(const [dt,b] of ordered)history[dt]=b.price;
+  const prior=Object.entries(history).filter(([dt,p])=>dt<lastDate&&valid(p)).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1];
+  const pct=valid(prior)?Number(((last.price/prior-1)*100).toFixed(3)):null;
+  data[sym]={...old,price:last.price,currency:x.meta.currency,exchange:x.meta.exchangeName||old.exchange||'',name:x.meta.longName||x.meta.shortName||old.name||sym,asOf:new Date(last.ts*1000).toISOString(),changePct:pct,history,source,...(deep?{backfillAt:checkedAt}:{}),checkedAt};
+  const file=DIR+'/stocks-history/'+sym+'.json';await fs.mkdir(DIR+'/stocks-history',{recursive:true});
+  const saved=await read(file,{data:{}});const series={...saved.data};
+  for(const [dt,b] of ordered){if([b.open,b.high,b.low,b.price].every(valid)&&b.high>=Math.max(b.open,b.price)&&b.low<=Math.min(b.open,b.price)&&b.high>=b.low)series[dt]={open:b.open,high:b.high,low:b.low,close:b.price,volume:Number.isFinite(b.volume)&&b.volume>=0?b.volume:null};}
+  await save(file,{symbol:sym,currency:x.meta.currency,source,interval:'1d',checkedAt,data:series});
+  updates++;info[sym]={range,days:Object.keys(history).length,first:Object.keys(history).sort()[0],asOf:data[sym].asOf};console.log(sym,info[sym]);
+ }catch(e){errors[sym]=e.message;console.warn(sym,e.message);}
+ await delay(350);
 }
-const checkedAt=new Date().toISOString();
-if(updates||Object.keys(data).length){await fs.writeFile(FILE,JSON.stringify({schemaVersion:1,updatedAt:updates?checkedAt:(previous.updatedAt||null),checkedAt,source:'Yahoo Finance chart (unofficial, delayed)',data}));}
-await fs.writeFile(path.join(DIR,'stocks-status.json'),JSON.stringify({checkedAt,updated:updates,total:tickers.length,errors}));
-console.log('Stocks complete',updates,'/',tickers.length);
+if(Object.keys(data).length)await save(FILE,{...previous,schemaVersion:1,updatedAt:updates?checkedAt:previous.updatedAt,checkedAt,source,data});
+await save(DIR+'/stocks-status.json',{checkedAt,updated:updates,total:tickers.length,errors,info});
+console.log('Stocks',updates,'/',tickers.length);if(!updates)process.exitCode=1;
