@@ -1,1 +1,1 @@
-{"updatedAt":"2026-11-26T05:58:37.187Z","source":"api.sky.bank","via":"api","rateType":"cash","branch":"Київське відділення №1","ratesByType":{"card":{"USD":{"buy":44.8,"sell":45.8},"EUR":{"buy":49.2,"sell":50.2}}},"data":{"USD":{"buy":45.1,"sell":45.5},"EUR":{"buy":49.4,"sell":49.8}}}
+{"updatedAt":"2026-11-26T11:35:06.486Z","source":"api.sky.bank","via":"api","rateType":"cash","branch":"Київське відділення №1","ratesByType":{"card":{"USD":{"buy":44.75,"sell":45.75},"EUR":{"buy":49.05,"sell":50.05}}},"data":{"USD":{"buy":45.05,"sell":45.45},"EUR":{"buy":49.4,"sell":49.8}}}

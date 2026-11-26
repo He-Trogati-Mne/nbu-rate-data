@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-26T09:46:07.707Z",
-  "runId": "45794922670",
+  "checkedAt": "2026-11-26T11:32:30.757Z",
+  "runId": "45811402047",
   "updated": 2,
   "refreshed": 2,
   "total": 6,
@@ -23,6 +23,12 @@
       "rateDate": "2026-11-26",
       "rateType": "cash"
     },
+    "asvio": {
+      "status": "not_updated",
+      "reason": "Сторінку завантажено, але курси не розпізнані",
+      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
+      "previousSource": "minfin.com.ua"
+    },
     "pumb": {
       "status": "updated",
       "source": "https://about.pumb.ua/info/currency_converter",
@@ -34,12 +40,6 @@
         "PLN"
       ],
       "rateDate": null
-    },
-    "asvio": {
-      "status": "not_updated",
-      "reason": "Сторінку завантажено, але курси не розпізнані",
-      "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
-      "previousSource": "minfin.com.ua"
     },
     "alliance": {
       "status": "not_updated",
