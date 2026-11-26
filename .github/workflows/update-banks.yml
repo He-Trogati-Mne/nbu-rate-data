@@ -25,14 +25,30 @@ jobs:
         with:
           node-version: '22'
       - name: Refresh 6 problematic banks with careful validation
+        continue-on-error: true
         run: node scripts/fetch-selected-banks.mjs
       - name: Install Chromium for full crawler (only daily/manual)
         if: github.event.schedule == '47 2 * * *' || inputs.deep == true
         run: |
           npm install --no-save --no-package-lock playwright
           npx playwright install --with-deps chromium
-      - name: Full official-bank crawler plus NBU and crypto historical data
+      - name: Refresh deep crypto USD history independently
         if: github.event.schedule == '47 2 * * *' || inputs.deep == true
+        continue-on-error: true
+        env:
+          CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
+        run: node scripts/fetch-crypto-history.mjs
+      - name: Full official-bank crawler
+        if: github.event.schedule == '47 2 * * *' || inputs.deep == true
+        continue-on-error: true
+        env:
+          NBU_FETCH_MODE: banks
+        run: node scripts/fetch.js
+      - name: Additional data and NBU history
+        if: github.event.schedule == '47 2 * * *' || inputs.deep == true
+        continue-on-error: true
+        env:
+          NBU_FETCH_MODE: extras
         run: node scripts/fetch.js
       - name: Produce bank stale-data health status
         run: node scripts/bank-health.mjs
