@@ -5,6 +5,15 @@ on:
     # Кожні 30 хвилин, час UTC. Плановий запуск може затримуватися.
     - cron: '13,43 * * * *'
   workflow_dispatch:
+    inputs:
+      stock_backfill:
+        description: 'Refresh full stock history (all available dates)'
+        type: boolean
+        default: false
+      crypto_history:
+        description: 'Refresh and extend crypto history'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -38,7 +47,17 @@ jobs:
       - name: Акції та історія котирувань
         id: stocks
         continue-on-error: true
+        env:
+          NBU_STOCK_BACKFILL: ${{ inputs.stock_backfill && '1' || '0' }}
         run: node scripts/fetch-stocks.mjs
+
+      - name: Історія криптовалют — USD
+        if: github.event_name == 'workflow_dispatch' && inputs.crypto_history
+        id: crypto_history
+        continue-on-error: true
+        env:
+          CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
+        run: node scripts/fetch-crypto-history.mjs
 
       - name: Встановити Chromium для сайтів із JavaScript
         if: github.event_name == 'workflow_dispatch'
@@ -79,6 +98,7 @@ jobs:
           CORE_STEP: ${{ steps.core.outcome }}
           STOCKS_STEP: ${{ steps.stocks.outcome }}
           EXTRAS_STEP: ${{ steps.extras.outcome }}
+          CRYPTO_HISTORY_STEP: ${{ steps.crypto_history.outcome }}
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -91,6 +111,10 @@ jobs:
             `- Основні валюти та криптовалюти: **${process.env.CORE_STEP}**`,
             `- Акції та історія: **${process.env.STOCKS_STEP}**`
           ];
+          const stocks = read('stocks-status');
+          const cryptoHistory = read('crypto-history-status');
+          if (stocks) lines.push(`- Акції: ${stocks.updated}/${stocks.total} оновлено; помилки: ${Object.keys(stocks.errors || {}).length}`);
+          if (process.env.CRYPTO_HISTORY_STEP && process.env.CRYPTO_HISTORY_STEP !== 'skipped' && cryptoHistory) lines.push(`- Історія криптовалют: ${cryptoHistory.updated}/${cryptoHistory.total} отримали дані; помилки: ${Object.keys(cryptoHistory.errors || {}).length}`);
           if (process.env.EVENT_NAME === 'workflow_dispatch') {
             lines.push(`- Додаткові дані та історія НБУ: **${process.env.EXTRAS_STEP}**`);
             lines.push(`- Банки: **${current ? `${status.updated}/${status.total} отримали підтверджені дані` : `не вдалося завершити перевірку (${process.env.BANKS_STEP})`}**`);
