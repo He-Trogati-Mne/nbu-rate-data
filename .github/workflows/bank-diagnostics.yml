@@ -1,39 +1,43 @@
-name: Bank API diagnostics
-
+name: NBU Rate — діагностика
 on:
   workflow_dispatch:
     inputs:
-      banks:
-        description: 'all = all 26 banks, or comma-separated IDs (e.g. sky,ukrsib)'
-        required: false
-        default: 'all'
+      bank_ids:
+        description: 'Банки для браузерної діагностики (all або IDs через кому)'
         type: string
-
+        default: all
 permissions:
   contents: read
-
+concurrency:
+  group: nbu-diagnostics
+  cancel-in-progress: false
 jobs:
-  diagnose:
+  diagnostics:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Playwright
+      - name: Встановлення Chromium
+        timeout-minutes: 6
+        continue-on-error: true
         run: |
           npm install --no-save --no-package-lock playwright
           npx playwright install --with-deps chromium
-      - name: Inspect public bank pages and currency APIs
+      - name: Перевірка джерел без публікації даних
         env:
-          BANK_IDS: ${{ inputs.banks || 'all' }}
-        run: node scripts/bank-diagnostics.mjs
-      - name: Upload report
+          BANK_IDS: ${{ inputs.bank_ids }}
+        run: node scripts/update-all.mjs --diagnostics
+      - name: Зберегти діагностику
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bank-api-report
-          path: diagnostics/bank-api-report.json
+          name: nbu-diagnostics
+          path: |
+            diagnostics/
+            data/*status.json
+            data/bank-health.json
           if-no-files-found: warn
           retention-days: 7
