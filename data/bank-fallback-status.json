@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-27T10:50:53.531Z",
-  "runId": "45984988112",
+  "checkedAt": "2026-11-27T12:14:19.180Z",
+  "runId": "45996456023",
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -67,12 +67,6 @@
       ],
       "reason": "http_error"
     },
-    "grant": {
-      "status": "not_updated",
-      "primaryReason": "https://www.grant.ua/: HTTP 403",
-      "attempts": [],
-      "reason": "No fallback configured"
-    },
     "industrial": {
       "status": "not_updated",
       "primaryReason": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
@@ -83,19 +77,6 @@
         }
       ],
       "reason": "skipped_restricted"
-    },
-    "asvio": {
-      "status": "not_updated",
-      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
-      "attempts": [
-        {
-          "url": "https://www.asviobank.ua/",
-          "http": 200,
-          "tables": 0,
-          "status": "no_unambiguous_rates"
-        }
-      ],
-      "reason": "no_unambiguous_rates"
     },
     "vostok": {
       "status": "not_updated",
@@ -109,6 +90,19 @@
       "attempts": [
         {
           "url": "https://mtb.ua/currency",
+          "http": 200,
+          "tables": 0,
+          "status": "no_unambiguous_rates"
+        }
+      ],
+      "reason": "no_unambiguous_rates"
+    },
+    "asvio": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
+      "attempts": [
+        {
+          "url": "https://www.asviobank.ua/",
           "http": 200,
           "tables": 0,
           "status": "no_unambiguous_rates"
