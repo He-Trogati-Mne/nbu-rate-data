@@ -12,6 +12,11 @@ on:
         description: 'Розширене оновлення історії акцій'
         type: boolean
         default: false
+      archive:
+        description: 'Глибокий імпорт офіційних архівів криптовалют (лише вручну)'
+        type: choice
+        options: ['none', 'kraken', 'binance', 'all']
+        default: 'none'
       publish:
         description: 'Зберегти дані у main (вимкніть для тесту)'
         type: boolean
@@ -24,7 +29,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,7 +38,9 @@ jobs:
         with:
           node-version: '22'
       - name: Перевірка захисту історії
-        run: node scripts/update-all.mjs --self-test
+        run: |
+          node scripts/update-all.mjs --self-test
+          node scripts/bank-fallbacks.mjs --self-test
       - name: Встановлення Chromium
         timeout-minutes: 6
         continue-on-error: true
@@ -43,6 +50,7 @@ jobs:
       - name: Оновлення всіх джерел
         env:
           HISTORY: ${{ inputs.history && '1' || '0' }}
+          NBU_ARCHIVE_IMPORT: ${{ inputs.archive || 'none' }}
           NBU_STOCK_BACKFILL: ${{ inputs.stock_backfill && '1' || '0' }}
           CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
         run: |
@@ -56,7 +64,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: update-report
-          path: data/update-status.json
+          path: |
+            data/update-status.json
+            data/bank-fallback-status.json
+            data/bank-fetch-status.json
+            data/stocks-status.json
           if-no-files-found: warn
           retention-days: 7
       - name: Публікація JSON
