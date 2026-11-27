@@ -15,9 +15,10 @@ for(const k of keys){
     await fs.writeFile(file+'.tmp',JSON.stringify({...x,data:{},unverifiedData:x.data,verification:'unverified'}));
     await fs.rename(file+'.tmp',file);
   }
-  let status=unofficial?'unverified':suspect?'suspicious':ageHours==null?'unknown':ageHours>24?'stale':'ok';
-  result[k]={status,source:x.source||null,updatedAt:x.updatedAt||null,ageHours:ageHours===null?null:Math.round(ageHours*10)/10,suspectSameValues:!!suspect,officialSource:!unofficial};
+  const rateAge=x.rateDate?(Date.now()-Date.parse(x.rateDate+'T00:00:00Z'))/3600000:null;
+  let status=unofficial?'unverified':suspect?'suspicious':ageHours==null?'unknown':ageHours>24||(Number.isFinite(rateAge)&&rateAge>96)?'stale':'ok';
+  result[k]={status,rateDate:x.rateDate||null,source:x.source||null,updatedAt:x.updatedAt||null,ageHours:ageHours===null?null:Math.round(ageHours*10)/10,suspectSameValues:!!suspect,officialSource:!unofficial};
   console.log(`${k}: ${status}, ${ageHours?.toFixed(1)||'unknown'}h${suspect?' (identical currencies)':''}`);
- }catch(e){result[k]={status:'missing',error:e.message};}
+ }catch(e){result[k]={status:'missing',error:e.message};console.warn(`${k}: missing (${e.code||e.message})`);}
 }
 await fs.writeFile(path.join(DIR,'bank-health.json'),JSON.stringify({checkedAt,data:result}));
