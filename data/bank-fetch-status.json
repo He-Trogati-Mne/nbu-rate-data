@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-27T12:14:19.119Z",
-  "runId": "45996456023",
+  "checkedAt": "2026-11-27T14:02:49.094Z",
+  "runId": "46011776690",
   "updated": 33,
   "refreshed": 33,
   "total": 48,
@@ -97,35 +97,6 @@
       ],
       "rateDate": null
     },
-    "ukrexim": {
-      "status": "updated",
-      "source": "https://www.eximb.com/ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": null
-    },
-    "lviv": {
-      "status": "not_updated",
-      "reason": "https://www.banklviv.com/: HTTP 403",
-      "previousUpdatedAt": null,
-      "previousSource": null,
-      "fallback": {
-        "status": "not_updated",
-        "primaryReason": "https://www.banklviv.com/: HTTP 403",
-        "attempts": [
-          {
-            "url": "https://banklviv.ua/exchages?info_0=0",
-            "http": 403,
-            "status": "http_error"
-          }
-        ],
-        "reason": "http_error"
-      }
-    },
     "credit-agricole": {
       "status": "updated",
       "source": "https://credit-agricole.ua/kurs-valyut",
@@ -146,6 +117,24 @@
       ],
       "rateDate": "2026-11-27"
     },
+    "lviv": {
+      "status": "not_updated",
+      "reason": "https://www.banklviv.com/: HTTP 403",
+      "previousUpdatedAt": null,
+      "previousSource": null,
+      "fallback": {
+        "status": "not_updated",
+        "primaryReason": "https://www.banklviv.com/: HTTP 403",
+        "attempts": [
+          {
+            "url": "https://banklviv.ua/exchages?info_0=0",
+            "http": 403,
+            "status": "http_error"
+          }
+        ],
+        "reason": "http_error"
+      }
+    },
     "a-bank": {
       "status": "updated",
       "source": "https://a-bank.com.ua/backend/api/v1/rates",
@@ -156,6 +145,17 @@
       ],
       "rateDate": "2026-11-27",
       "rateType": "cash"
+    },
+    "ukrexim": {
+      "status": "updated",
+      "source": "https://www.eximb.com/ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ],
+      "rateDate": null
     },
     "pravex": {
       "status": "updated",
@@ -182,24 +182,14 @@
       "rateDate": "2026-11-27",
       "rateType": "card"
     },
-    "otp": {
+    "globus": {
       "status": "updated",
-      "source": "https://www.otpbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "kredo": {
-      "status": "updated",
-      "source": "https://kredobank.com.ua/info/kursy-valyut/commercial",
+      "source": "https://globusbank.com.ua/",
       "via": "html",
       "currencies": [
         "USD",
         "EUR",
-        "PLN"
+        "GBP"
       ],
       "rateDate": null
     },
@@ -221,20 +211,20 @@
         "reason": "http_error"
       }
     },
-    "globus": {
+    "kredo": {
       "status": "updated",
-      "source": "https://globusbank.com.ua/",
+      "source": "https://kredobank.com.ua/info/kursy-valyut/commercial",
       "via": "html",
       "currencies": [
         "USD",
         "EUR",
-        "GBP"
+        "PLN"
       ],
       "rateDate": null
     },
-    "piraeus": {
+    "otp": {
       "status": "updated",
-      "source": "https://www.piraeusbank.ua/",
+      "source": "https://www.otpbank.com.ua/",
       "via": "html",
       "currencies": [
         "USD",
@@ -253,6 +243,26 @@
       ],
       "rateDate": null
     },
+    "piraeus": {
+      "status": "updated",
+      "source": "https://www.piraeusbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
+    "alliance": {
+      "status": "updated",
+      "source": "https://alb.ua/uk",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
     "polikom": {
       "status": "updated",
       "source": "https://www.policombank.com/kurs-valjut",
@@ -263,18 +273,6 @@
         "PLN"
       ],
       "rateDate": "2026-11-27"
-    },
-    "ukrcapital": {
-      "status": "updated",
-      "source": "https://www.ukrcapital.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP",
-        "PLN"
-      ],
-      "rateDate": null
     },
     "bank34": {
       "status": "updated",
@@ -297,6 +295,18 @@
       ],
       "rateDate": null
     },
+    "ukrcapital": {
+      "status": "updated",
+      "source": "https://www.ukrcapital.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP",
+        "PLN"
+      ],
+      "rateDate": null
+    },
     "industrial": {
       "status": "not_updated",
       "reason": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
@@ -313,16 +323,6 @@
         ],
         "reason": "skipped_restricted"
       }
-    },
-    "alliance": {
-      "status": "updated",
-      "source": "https://www.alb.ua/",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
     },
     "vostok": {
       "status": "not_updated",
@@ -440,13 +440,14 @@
         "reason": "skipped_restricted"
       }
     },
-    "unex": {
+    "mib": {
       "status": "updated",
-      "source": "https://unexbank.ua/",
-      "via": "html",
+      "source": "https://ii-bank.com.ua/uk/private-clients/rates",
+      "via": "browser",
       "currencies": [
         "USD",
-        "EUR"
+        "EUR",
+        "GBP"
       ],
       "rateDate": null
     },
@@ -467,17 +468,6 @@
       "previousUpdatedAt": null,
       "previousSource": null
     },
-    "mib": {
-      "status": "updated",
-      "source": "https://ii-bank.com.ua/uk/private-clients/rates",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": null
-    },
     "bizbank": {
       "status": "not_updated",
       "reason": "https://www.bisbank.com.ua/kurs-valyut/kyyiv/: HTTP 403; https://www.bisbank.com.ua/: HTTP 403",
@@ -494,6 +484,16 @@
         ],
         "reason": "skipped_restricted"
       }
+    },
+    "unex": {
+      "status": "updated",
+      "source": "https://unexbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
     },
     "metabank": {
       "status": "updated",
