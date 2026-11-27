@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-27T19:58:09.686Z",
-  "runId": "46059981512",
+  "checkedAt": "2026-11-27T20:30:45.789Z",
+  "runId": "46063731552",
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -55,6 +55,12 @@
       ],
       "reason": "http_error"
     },
+    "a-bank": {
+      "status": "not_updated",
+      "primaryReason": "https://a-bank.com.ua/backend/api/v1/rates: HTTP 429",
+      "attempts": [],
+      "reason": "No fallback configured"
+    },
     "idea": {
       "status": "not_updated",
       "primaryReason": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
@@ -67,12 +73,6 @@
       ],
       "reason": "http_error"
     },
-    "grant": {
-      "status": "not_updated",
-      "primaryReason": "https://www.grant.ua/: HTTP 403",
-      "attempts": [],
-      "reason": "No fallback configured"
-    },
     "industrial": {
       "status": "not_updated",
       "primaryReason": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
@@ -83,6 +83,19 @@
         }
       ],
       "reason": "skipped_restricted"
+    },
+    "asvio": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
+      "attempts": [
+        {
+          "url": "https://www.asviobank.ua/",
+          "http": 200,
+          "tables": 0,
+          "status": "no_unambiguous_rates"
+        }
+      ],
+      "reason": "no_unambiguous_rates"
     },
     "vostok": {
       "status": "not_updated",
@@ -103,18 +116,11 @@
       ],
       "reason": "no_unambiguous_rates"
     },
-    "asvio": {
+    "altbank": {
       "status": "not_updated",
-      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
-      "attempts": [
-        {
-          "url": "https://www.asviobank.ua/",
-          "http": 200,
-          "tables": 0,
-          "status": "no_unambiguous_rates"
-        }
-      ],
-      "reason": "no_unambiguous_rates"
+      "primaryReason": "https://altbank.ua/en: page.goto: Timeout 35000ms exceeded.\nCall log:\n  - navigating to \"https://altbank.ua/en\", waiting until \"domcontentloaded\"\n",
+      "attempts": [],
+      "reason": "No fallback configured"
     },
     "universal": {
       "status": "not_updated",
@@ -166,12 +172,6 @@
         }
       ],
       "reason": "http_error"
-    },
-    "sky": {
-      "status": "not_updated",
-      "primaryReason": "fetch failed",
-      "attempts": [],
-      "reason": "No fallback configured"
     },
     "komin": {
       "status": "not_updated",
