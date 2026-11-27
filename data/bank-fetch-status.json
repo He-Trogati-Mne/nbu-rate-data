@@ -1,10 +1,10 @@
 {
-  "checkedAt": "2026-11-27T06:09:04.099Z",
-  "runId": "45949564174",
-  "updated": 32,
-  "refreshed": 32,
+  "checkedAt": "2026-11-27T06:35:28.078Z",
+  "runId": "45952402477",
+  "updated": 31,
+  "refreshed": 31,
   "total": 48,
-  "notUpdated": 16,
+  "notUpdated": 17,
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -29,6 +29,22 @@
       "previousUpdatedAt": null,
       "previousSource": null
     },
+    "oschad": {
+      "status": "updated",
+      "source": "https://www.oschadbank.ua/currency-rate",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": "2026-11-27"
+    },
+    "pivdenny": {
+      "status": "not_updated",
+      "reason": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-23T21:40:20.117Z",
+      "previousSource": "bank.com.ua"
+    },
     "pumb": {
       "status": "updated",
       "source": "https://about.pumb.ua/info/currency_converter",
@@ -40,12 +56,6 @@
         "PLN"
       ],
       "rateDate": null
-    },
-    "pivdenny": {
-      "status": "not_updated",
-      "reason": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
-      "previousUpdatedAt": "2026-11-23T21:40:20.117Z",
-      "previousSource": "bank.com.ua"
     },
     "ukrgas": {
       "status": "updated",
@@ -66,27 +76,6 @@
       ],
       "rateDate": null
     },
-    "oschad": {
-      "status": "updated",
-      "source": "https://www.oschadbank.ua/msb/currency-rate",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": "2026-11-27"
-    },
-    "ukrexim": {
-      "status": "updated",
-      "source": "https://www.eximb.com/ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": null
-    },
     "lviv": {
       "status": "not_updated",
       "reason": "https://www.banklviv.com/: HTTP 403",
@@ -103,6 +92,17 @@
       ],
       "rateDate": "2026-11-27",
       "rateType": "cash"
+    },
+    "ukrexim": {
+      "status": "updated",
+      "source": "https://www.eximb.com/ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ],
+      "rateDate": null
     },
     "pravex": {
       "status": "updated",
@@ -129,27 +129,6 @@
       "rateDate": "2026-11-27",
       "rateType": "card"
     },
-    "otp": {
-      "status": "updated",
-      "source": "https://www.otpbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "globus": {
-      "status": "updated",
-      "source": "https://globusbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": null
-    },
     "kredo": {
       "status": "updated",
       "source": "https://kredobank.com.ua/info/kursy-valyut/commercial",
@@ -167,9 +146,20 @@
       "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
       "previousSource": "minfin.com.ua"
     },
-    "piraeus": {
+    "globus": {
       "status": "updated",
-      "source": "https://www.piraeusbank.ua/",
+      "source": "https://globusbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ],
+      "rateDate": null
+    },
+    "otp": {
+      "status": "updated",
+      "source": "https://www.otpbank.com.ua/",
       "via": "html",
       "currencies": [
         "USD",
@@ -185,6 +175,26 @@
         "EUR",
         "USD",
         "PLN"
+      ],
+      "rateDate": null
+    },
+    "piraeus": {
+      "status": "updated",
+      "source": "https://www.piraeusbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
+    "alliance": {
+      "status": "updated",
+      "source": "https://www.alb.ua/",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR"
       ],
       "rateDate": null
     },
@@ -211,6 +221,18 @@
       ],
       "rateDate": null
     },
+    "grant": {
+      "status": "not_updated",
+      "reason": "https://www.grant.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-27T06:07:01.028Z",
+      "previousSource": "www.grant.ua"
+    },
+    "industrial": {
+      "status": "not_updated",
+      "reason": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:38:50.101Z",
+      "previousSource": "industrialbank.ua"
+    },
     "bank34": {
       "status": "updated",
       "source": "https://bank34.ua/",
@@ -221,32 +243,6 @@
         "GBP"
       ],
       "rateDate": null
-    },
-    "grant": {
-      "status": "updated",
-      "source": "https://www.grant.ua/",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "alliance": {
-      "status": "updated",
-      "source": "https://alb.ua/uk",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "industrial": {
-      "status": "not_updated",
-      "reason": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
-      "previousUpdatedAt": "2026-11-24T22:38:50.101Z",
-      "previousSource": "industrialbank.ua"
     },
     "vostok": {
       "status": "not_updated",
@@ -289,16 +285,6 @@
       "rateDate": "2026-11-26",
       "rateType": "card"
     },
-    "accord": {
-      "status": "updated",
-      "source": "https://accordbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
     "procredit": {
       "status": "updated",
       "source": "https://procreditbank.com.ua/api/v1/currency/last?rate=mobile",
@@ -309,6 +295,16 @@
       ],
       "rateDate": "2026-11-27",
       "rateType": "online"
+    },
+    "accord": {
+      "status": "updated",
+      "source": "https://accordbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
     },
     "altbank": {
       "status": "updated",
@@ -350,6 +346,12 @@
       "previousUpdatedAt": null,
       "previousSource": null
     },
+    "bizbank": {
+      "status": "not_updated",
+      "reason": "https://www.bisbank.com.ua/kurs-valyut/kyyiv/: HTTP 403; https://www.bisbank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:36:51.914Z",
+      "previousSource": "www.bisbank.com.ua"
+    },
     "unex": {
       "status": "updated",
       "source": "https://unexbank.ua/",
@@ -360,25 +362,9 @@
       ],
       "rateDate": null
     },
-    "bizbank": {
-      "status": "not_updated",
-      "reason": "https://www.bisbank.com.ua/kurs-valyut/kyyiv/: HTTP 403; https://www.bisbank.com.ua/: HTTP 403",
-      "previousUpdatedAt": "2026-11-24T22:36:51.914Z",
-      "previousSource": "www.bisbank.com.ua"
-    },
     "metabank": {
       "status": "updated",
       "source": "https://www.mbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "oksi": {
-      "status": "updated",
-      "source": "https://oxibank.ua/",
       "via": "html",
       "currencies": [
         "USD",
@@ -391,6 +377,12 @@
       "reason": "https://www.fbank.com.ua/: HTTP 403",
       "previousUpdatedAt": "2026-11-24T22:36:55.923Z",
       "previousSource": "www.fbank.com.ua"
+    },
+    "trust-capital": {
+      "status": "not_updated",
+      "reason": "https://www.tc-bank.com/: HTTP 403",
+      "previousUpdatedAt": null,
+      "previousSource": null
     },
     "clearing": {
       "status": "updated",
@@ -405,11 +397,15 @@
       "rateType": "cash",
       "branch": "Головний офіс, м. Київ, вул. Борисоглібська, 5-A"
     },
-    "trust-capital": {
-      "status": "not_updated",
-      "reason": "https://www.tc-bank.com/: HTTP 403",
-      "previousUpdatedAt": null,
-      "previousSource": null
+    "oksi": {
+      "status": "updated",
+      "source": "https://oxibank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
     },
     "sky": {
       "status": "updated",
@@ -457,6 +453,7 @@
     "pivdenny": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
     "lviv": "https://www.banklviv.com/: HTTP 403",
     "idea": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
+    "grant": "https://www.grant.ua/: HTTP 403",
     "industrial": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
     "vostok": "Знайдено лише курс НБУ, не банківський курс купівлі/продажу",
     "mtb": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
