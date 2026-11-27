@@ -1,0 +1,189 @@
+{
+  "checkedAt": "2026-11-27T07:25:31.756Z",
+  "runId": "45957909291",
+  "banks": {
+    "ukrsib": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
+      "attempts": [
+        {
+          "url": "https://ukrsibbank.com/currency-cash/",
+          "http": 200,
+          "tables": 0,
+          "status": "no_unambiguous_rates"
+        }
+      ],
+      "reason": "no_unambiguous_rates"
+    },
+    "raif": {
+      "status": "not_updated",
+      "primaryReason": "https://raiffeisen.ua/currency: HTTP 403; https://raiffeisen.ua/en/currency?show=1: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://raiffeisen.ua/en/currency?show=1",
+          "status": "skipped_restricted"
+        },
+        {
+          "url": "https://raiffeisen.ua/currency?show=1",
+          "http": 403,
+          "status": "http_error"
+        }
+      ],
+      "reason": "http_error"
+    },
+    "pivdenny": {
+      "status": "not_updated",
+      "primaryReason": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://bank.com.ua/en/currency-metals-rates",
+          "http": 403,
+          "status": "http_error"
+        }
+      ],
+      "reason": "http_error"
+    },
+    "lviv": {
+      "status": "not_updated",
+      "primaryReason": "https://www.banklviv.com/: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://banklviv.ua/exchages?info_0=0",
+          "http": 403,
+          "status": "http_error"
+        }
+      ],
+      "reason": "http_error"
+    },
+    "a-bank": {
+      "status": "not_updated",
+      "primaryReason": "https://a-bank.com.ua/backend/api/v1/rates: HTTP 429",
+      "attempts": [],
+      "reason": "No fallback configured"
+    },
+    "idea": {
+      "status": "not_updated",
+      "primaryReason": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://ideabank.ua/ru",
+          "http": 403,
+          "status": "http_error"
+        }
+      ],
+      "reason": "http_error"
+    },
+    "grant": {
+      "status": "not_updated",
+      "primaryReason": "https://www.grant.ua/: HTTP 403",
+      "attempts": [],
+      "reason": "No fallback configured"
+    },
+    "industrial": {
+      "status": "not_updated",
+      "primaryReason": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://industrialbank.ua/ua/",
+          "status": "skipped_restricted"
+        }
+      ],
+      "reason": "skipped_restricted"
+    },
+    "vostok": {
+      "status": "not_updated",
+      "primaryReason": "Знайдено лише курс НБУ, не банківський курс купівлі/продажу",
+      "attempts": [],
+      "reason": "No independently verified bank buy/sell source configured"
+    },
+    "mtb": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
+      "attempts": [
+        {
+          "url": "https://mtb.ua/currency",
+          "http": 200,
+          "tables": 0,
+          "status": "no_unambiguous_rates"
+        }
+      ],
+      "reason": "no_unambiguous_rates"
+    },
+    "asvio": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
+      "attempts": [
+        {
+          "url": "https://www.asviobank.ua/",
+          "status": "error",
+          "reason": "page.goto: Timeout 18000ms exceeded."
+        }
+      ],
+      "reason": "error"
+    },
+    "universal": {
+      "status": "not_updated",
+      "primaryReason": "https://www.universalbank.com.ua/: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://www.universalbank.com.ua/",
+          "status": "skipped_restricted"
+        }
+      ],
+      "reason": "skipped_restricted"
+    },
+    "avangard": {
+      "status": "not_updated",
+      "primaryReason": "https://avgd.ua/: HTTP 403",
+      "attempts": [],
+      "reason": "No independently verified bank buy/sell source configured"
+    },
+    "bizbank": {
+      "status": "not_updated",
+      "primaryReason": "https://www.bisbank.com.ua/kurs-valyut/kyyiv/: HTTP 403; https://www.bisbank.com.ua/: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://www.bisbank.com.ua/",
+          "status": "skipped_restricted"
+        }
+      ],
+      "reason": "skipped_restricted"
+    },
+    "family": {
+      "status": "not_updated",
+      "primaryReason": "https://www.fbank.com.ua/: HTTP 403",
+      "attempts": [],
+      "reason": "No independently verified bank buy/sell source configured"
+    },
+    "trust-capital": {
+      "status": "not_updated",
+      "primaryReason": "https://www.tc-bank.com/: HTTP 403",
+      "attempts": [
+        {
+          "url": "https://tc-bank.com/",
+          "http": 403,
+          "status": "http_error"
+        },
+        {
+          "url": "https://tc-bank.com/ua/kursy-valyut.html",
+          "http": 403,
+          "status": "http_error"
+        }
+      ],
+      "reason": "http_error"
+    },
+    "komin": {
+      "status": "not_updated",
+      "primaryReason": "https://cib.com.ua/uk/about/page/informaciya-pro-bank: page.goto: Timeout 35000ms exceeded.\nCall log:\n  - navigating to \"https://cib.com.ua/uk/about/page/informaciya-pro-bank\", waiting until \"domcontentloaded\"\n",
+      "attempts": [
+        {
+          "url": "https://cib.com.ua/uk",
+          "status": "error",
+          "reason": "page.goto: Timeout 18000ms exceeded."
+        }
+      ],
+      "reason": "error"
+    }
+  },
+  "updated": 0
+}
