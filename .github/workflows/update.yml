@@ -1,180 +1,71 @@
 name: NBU Rate — оновлення даних
-
 on:
   schedule:
-    # Кожні 30 хвилин, час UTC. Плановий запуск може затримуватися.
     - cron: '13,43 * * * *'
   workflow_dispatch:
     inputs:
-      stock_backfill:
-        description: 'Refresh full stock history (all available dates)'
+      history:
+        description: 'Додатковий прохід історії НБУ та криптовалют'
         type: boolean
         default: false
-      crypto_history:
-        description: 'Refresh and extend crypto history'
+      stock_backfill:
+        description: 'Розширене оновлення історії акцій'
+        type: boolean
+        default: false
+      publish:
+        description: 'Зберегти дані у main (вимкніть для тесту)'
         type: boolean
         default: true
-
 permissions:
   contents: write
-
 concurrency:
   group: nbu-data-writer
   cancel-in-progress: false
-
 jobs:
   update:
-    name: Оновлення валют, акцій та банків
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-
+    timeout-minutes: 45
     steps:
-      - name: Отримати репозиторій
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: main
-
-      - name: Налаштувати Node.js
-        uses: actions/setup-node@v4
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Основні валютні курси та криптовалюти
-        id: core
-        continue-on-error: true
-        run: node scripts/fetch-core.mjs
-
-      - name: Акції та історія котирувань
-        id: stocks
-        continue-on-error: true
-        env:
-          NBU_STOCK_BACKFILL: ${{ inputs.stock_backfill && '1' || '0' }}
-        run: node scripts/fetch-stocks.mjs
-
-      - name: Історія криптовалют — USD / USDT
-        if: github.event_name == 'workflow_dispatch' && inputs.crypto_history
-        id: crypto_history
-        continue-on-error: true
-        run: node scripts/fetch-crypto-history.mjs
-
-      - name: Встановити Chromium для сайтів із JavaScript
-        if: github.event_name == 'workflow_dispatch'
-        id: browser
+      - name: Перевірка захисту історії
+        run: node scripts/update-all.mjs --self-test
+      - name: Встановлення Chromium
+        timeout-minutes: 6
         continue-on-error: true
         run: |
           npm install --no-save --no-package-lock playwright
           npx playwright install --with-deps chromium
-
-      - name: Перевірити всі банки на офіційних сайтах
-        if: github.event_name == 'workflow_dispatch'
-        id: banks
-        continue-on-error: true
+      - name: Оновлення всіх джерел
         env:
-          NBU_FETCH_MODE: banks
-        run: node scripts/fetch.js
-
-      - name: Оновити додаткові дані та історію НБУ
-        if: github.event_name == 'workflow_dispatch'
-        id: extras
-        continue-on-error: true
-        env:
-          NBU_FETCH_MODE: extras
-        run: node scripts/fetch.js
-
-      - name: Перевірити застарілі банківські курси
-        if: always()
-        id: health
-        continue-on-error: true
-        run: node scripts/bank-health.mjs
-
-      - name: Підсумок оновлення
-        if: always()
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BANKS_STEP: ${{ steps.banks.outcome }}
-          CORE_STEP: ${{ steps.core.outcome }}
-          STOCKS_STEP: ${{ steps.stocks.outcome }}
-          EXTRAS_STEP: ${{ steps.extras.outcome }}
-          CRYPTO_HISTORY_STEP: ${{ steps.crypto_history.outcome }}
+          HISTORY: ${{ inputs.history && '1' || '0' }}
+          NBU_STOCK_BACKFILL: ${{ inputs.stock_backfill && '1' || '0' }}
+          CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
         run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const read = name => {try{return JSON.parse(fs.readFileSync('data/'+name+'.json','utf8'));}catch{return null;}};
-          const status = read('bank-fetch-status');
-          const current = status?.runId === process.env.GITHUB_RUN_ID;
-          const lines = [
-            '## NBU Rate — результати оновлення',
-            '',
-            `- Основні валюти та криптовалюти: **${process.env.CORE_STEP}**`,
-            `- Акції та історія: **${process.env.STOCKS_STEP}**`
-          ];
-          const quotes = read('crypto-quotes-status');
-          if (quotes?.runId === process.env.GITHUB_RUN_ID) lines.push(`- Поточні криптокурси USD: ${quotes.updated}/${quotes.total}; помилки: ${Object.keys(quotes.errors || {}).length}`);
-          const stocks = read('stocks-status');
-          const cryptoHistory = read('crypto-history-status');
-          if (stocks) lines.push(`- Акції: ${stocks.updated}/${stocks.total} оновлено; помилки: ${Object.keys(stocks.errors || {}).length}`);
-          if (process.env.CRYPTO_HISTORY_STEP && process.env.CRYPTO_HISTORY_STEP !== 'skipped') {
-            if (cryptoHistory?.runId === process.env.GITHUB_RUN_ID) {
-              lines.push(`- Історія криптовалют (${cryptoHistory.provider}): ${cryptoHistory.updated}/${cryptoHistory.total}; USD: ${cryptoHistory.usdUpdated || 0}/${cryptoHistory.total}; нових точок USD: ${cryptoHistory.filled || 0}; помилки: ${Object.keys(cryptoHistory.errors || {}).length}`);
-              if (Object.keys(cryptoHistory.errors || {}).length) {
-                lines.push('', '### Помилки історії криптовалют');
-                for (const [id, reason] of Object.entries(cryptoHistory.errors)) lines.push(`- ${id}: ${reason}`);
-              }
-            } else lines.push(`- Історія криптовалют: ${process.env.CRYPTO_HISTORY_STEP}; немає актуального звіту`);
-          }
-          if (process.env.EVENT_NAME === 'workflow_dispatch') {
-            lines.push(`- Додаткові дані та історія НБУ: **${process.env.EXTRAS_STEP}**`);
-            lines.push(`- Банки: **${current ? `${status.updated}/${status.total} отримали підтверджені дані` : `не вдалося завершити перевірку (${process.env.BANKS_STEP})`}**`);
-            if (current) {
-              const failed = Object.entries(status.banks || {}).filter(([,v]) => v.status !== 'updated');
-              if (failed.length) {
-                lines.push('',`### Не вдалося оновити ${failed.length} банків`);
-                for (const [id, v] of failed) lines.push(`- ${id}: ${v.reason || 'джерело не повернуло курс'}`);
-              }
-            }
-          } else {
-            lines.push('- Банки: за цим розкладом не запускалися; для всіх банків натисніть **Run workflow**');
-          }
-          const summary=lines.join('\n')+'\n';
-          if(process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,summary);
-          console.log(summary);
-          NODE
-
-      - name: Зберегти результати у GitHub
+          if [[ "$HISTORY" == 1 ]]; then
+            node scripts/update-all.mjs --history
+          else
+            node scripts/update-all.mjs
+          fi
+      - name: Зберегти звіт як артефакт
         if: always()
-        shell: bash
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-report
+          path: data/update-status.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Публікація JSON
+        if: success() && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.publish)
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/
-          if git diff --cached --quiet; then
-            echo 'Нових змін немає; попередні дані збережено'
-            exit 0
-          fi
-          git commit -m "data: оновлення $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git pull --rebase origin main
+          git add -- 'data/*.json' 'data/**/*.json'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: оновлення $(date -u +%FT%TZ)"
           git push origin HEAD:main
-
-      - name: Позначити невдале повне ручне оновлення
-        if: always() && github.event_name == 'workflow_dispatch'
-        shell: bash
-        env:
-          CORE_STEP: ${{ steps.core.outcome }}
-          STOCKS_STEP: ${{ steps.stocks.outcome }}
-          BANKS_STEP: ${{ steps.banks.outcome }}
-          CRYPTO_HISTORY_STEP: ${{ steps.crypto_history.outcome }}
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          let b = null;
-          try { b = JSON.parse(fs.readFileSync('data/bank-fetch-status.json','utf8')); } catch {}
-          const actual = b?.runId === process.env.GITHUB_RUN_ID;
-          if (process.env.CORE_STEP !== 'success' || process.env.STOCKS_STEP !== 'success' || process.env.BANKS_STEP !== 'success' || process.env.CRYPTO_HISTORY_STEP === 'failure' || !actual || b.updated === 0) {
-            console.error('::error::Ручне оновлення не було повним. Перевірте звіт про банки та журнали кроків.');
-            process.exitCode=1;
-          } else if (b.updated < b.total) {
-            console.log(`::warning::Оновлено ${b.updated} із ${b.total} банків. Інші JSON залишилися без змін.`);
-          }
-          NODE
