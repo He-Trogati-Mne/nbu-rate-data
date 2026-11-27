@@ -1,6 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 
-// Combined diagnostics: metadata for first-party public endpoints, samples for known currency APIs.
 const banks = {
   raif: 'https://raiffeisen.ua/currency',
   ukrsib: 'https://ukrsibbank.com/currency-cash/',
@@ -45,7 +44,12 @@ const sampleSources = {
   ukrsib: ['https://ukrsibbank.com/currency-cash/', []],
   asvio: ['https://www.asviobank.ua/', []],
 };
-// Empty input, all, or * selects all 26 diagnostic banks.
+// Keep diagnostics aligned with the unchanged primary collector.
+const collector=await readFile(new URL('./fetch.js',import.meta.url),'utf8');
+const declaration=collector.match(/const OFFICIAL_BANK_SOURCES = \[([\s\S]*?)\n\];/)?.[1]||'';
+for(const m of declaration.matchAll(/\{\s*id:\s*'([^']+)',\s*urls:\s*\[\s*'([^']+)'/g))if(!banks[m[1]])banks[m[1]]=m[2];
+Object.assign(banks,{lviv:'https://banklviv.ua/exchages?info_0=0',idea:'https://ideabank.ua/ru','trust-capital':'https://tc-bank.com/',pivdenny:'https://bank.com.ua/en/currency-metals-rates',bizbank:'https://www.bisbank.com.ua/'});
+// Empty input, all, or * selects all configured diagnostic banks.
 const raw = (process.env.BANK_IDS ?? '').trim();
 const tokens = [...new Set(raw.toLowerCase().split(/[,;\s]+/u)
   .map(id => id.replace(/[\u2010-\u2015\u2212]/g, '-'))
@@ -58,7 +62,7 @@ if (unknown.length) {
   console.log(`Available IDs: ${Object.keys(banks).join(', ')}`);
 }
 if (!wanted.length) {
-  console.error('No valid bank IDs. Leave the banks field empty or enter all to check all 26 banks.');
+  console.error('No valid bank IDs. Leave the banks field empty or enter all to check all configured banks.');
   process.exit(1);
 }
 const selected = Object.entries(banks).filter(([id]) => wanted.includes(id));
