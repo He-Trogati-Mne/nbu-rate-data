@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-27T18:44:32.539Z",
-  "runId": "46051233328",
+  "checkedAt": "2026-11-27T19:58:09.686Z",
+  "runId": "46059981512",
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -14,12 +14,6 @@
         }
       ],
       "reason": "no_unambiguous_rates"
-    },
-    "ukrgas": {
-      "status": "not_updated",
-      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
-      "attempts": [],
-      "reason": "No fallback configured"
     },
     "raif": {
       "status": "not_updated",
@@ -73,6 +67,12 @@
       ],
       "reason": "http_error"
     },
+    "grant": {
+      "status": "not_updated",
+      "primaryReason": "https://www.grant.ua/: HTTP 403",
+      "attempts": [],
+      "reason": "No fallback configured"
+    },
     "industrial": {
       "status": "not_updated",
       "primaryReason": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
@@ -83,12 +83,6 @@
         }
       ],
       "reason": "skipped_restricted"
-    },
-    "grant": {
-      "status": "not_updated",
-      "primaryReason": "https://www.grant.ua/: HTTP 403",
-      "attempts": [],
-      "reason": "No fallback configured"
     },
     "vostok": {
       "status": "not_updated",
@@ -172,6 +166,12 @@
         }
       ],
       "reason": "http_error"
+    },
+    "sky": {
+      "status": "not_updated",
+      "primaryReason": "fetch failed",
+      "attempts": [],
+      "reason": "No fallback configured"
     },
     "komin": {
       "status": "not_updated",
