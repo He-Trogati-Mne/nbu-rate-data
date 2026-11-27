@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-26T19:44:27.367Z",
-  "runId": "45885793292",
+  "checkedAt": "2026-11-27T03:01:01.515Z",
+  "runId": "45931602446",
   "updated": 2,
   "refreshed": 2,
   "total": 6,
@@ -20,7 +20,7 @@
         "EUR",
         "USD"
       ],
-      "rateDate": "2026-11-26",
+      "rateDate": "2026-11-27",
       "rateType": "cash"
     },
     "pumb": {
