@@ -1,4 +1,3 @@
-// Orchestrates existing collectors without modifying their parsers or output paths.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -7,6 +6,7 @@ const root = 'data', reportFile = `${root}/update-status.json`;
 const diagnostic = process.argv.includes('--diagnostics');
 const forceHistory = process.argv.includes('--history');
 const started = new Date().toISOString(), today = started.slice(0,10);
+const archive = process.env.NBU_ARCHIVE_IMPORT || 'none';
 const report = { checkedAt: started, runId: process.env.GITHUB_RUN_ID || null, mode: diagnostic?'diagnostics':'update', stages: {}, historyProtection: [], sources: {} };
 const obj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const dayKey = /^\d{4}-\d{2}-\d{2}$/;
@@ -61,7 +61,7 @@ function protect(file,old,next) {
     for(const [id,stock] of Object.entries(old.data)){
       if(!obj(next.data[id])){next.data[id]=stock;n++;continue;}
       if(stock.currency&&next.data[id].currency!==stock.currency)throw Error(`Currency changed: ${id}`);
-      if(obj(stock.history)){if(!obj(next.data[id].history))next.data[id].history={};n+=historyMap(stock.history,next.data[id].history);}
+      if(obj(stock.history)){if(!obj(next.data[id].history))next.data[id].history={};n+=historyMap(stock.history,next.data[id].history,{lockPast:true});}
     }
     return n;
   }
@@ -76,11 +76,11 @@ function protect(file,old,next) {
   }
   return 0;
 }
-async function stage(name,script,env={},minutes=5){
+async function stage(name,script,env={},minutes=5,args=[]){
   const begin=Date.now();console.log(`\n=== ${name} ===`);
   const childEnv={...process.env};for(const k of ['NBU_FETCH_MODE','NBU_BANK_IDS','NBU_BANK_STATUS_FILE','NBU_CRYPTO_PROVIDERS','NBU_CRYPTO_BACKFILL_PAGES'])delete childEnv[k];Object.assign(childEnv,env);
   const result=await new Promise(resolve=>{
-    const child=spawn(process.execPath,[`scripts/${script}`],{env:childEnv,stdio:'inherit',detached:process.platform!=='win32'});
+    const child=spawn(script.endsWith('.py')?'python3':process.execPath,[`scripts/${script}`,...args],{env:childEnv,stdio:'inherit',detached:process.platform!=='win32'});
     let timedOut=false;const timer=setTimeout(()=>{timedOut=true;try{if(process.platform!=='win32')process.kill(-child.pid,'SIGKILL');else child.kill('SIGKILL');}catch{}},minutes*60000);
     child.once('error',e=>{clearTimeout(timer);resolve({status:'error',error:e.message});});
     child.once('close',(code,signal)=>{clearTimeout(timer);resolve({status:timedOut?'timeout':code===0?'finished':'error',exitCode:code,signal});});
@@ -110,13 +110,27 @@ function category(reason=''){
   return 'other_or_unknown';
 }
 async function collectReports(){
-  for(const id of ['core-status','bank-fetch-status','crypto-quotes-status','crypto-history-status','stocks-status','bank-health','kuna-status']){
+  for(const id of ['core-status','bank-fetch-status','crypto-quotes-status','crypto-history-status','stocks-status','bank-health','bank-fallback-status','banks-registry','kuna-status']){
     const value=await maybe(`${root}/${id}.json`);
     if(!value){report.sources[id]={missing:true};continue;}
     const current=typeof value.checkedAt==='string'&&Date.parse(value.checkedAt)>=Date.parse(started)&&(!value.runId||value.runId===report.runId);
     report.sources[id]={current,value};
-    if(id==='bank-fetch-status')report.bankIssues=Object.entries(value.banks||{}).filter(([,v])=>v.status!=='updated').map(([bank,v])=>({bank,category:category(v.reason),reason:v.reason,previousUpdatedAt:v.previousUpdatedAt,previousSource:v.previousSource,legacyAggregator:/minfin\.com\.ua|finance\.ua/i.test(v.previousSource||''),current}));
+    if(id==='bank-fetch-status')report.bankIssues=Object.entries(value.banks||{}).filter(([,v])=>v.status!=='updated').map(([bank,v])=>({bank,category:category(v.reason),reason:v.reason,previousUpdatedAt:v.previousUpdatedAt,previousSource:v.previousSource,legacyAggregator:/minfin\.com\.ua|finance\.ua/i.test(v.previousSource||''),fallback:v.fallback||null,current}));
   }
+}
+async function repairNbuRecent(){
+  const file='data/nbu-history.json', h=await read(file), nbu=await read('data/nbu.json');
+  if(h.formatVersion!==2||!obj(h.data)||!Array.isArray(nbu.data))throw Error('Unexpected NBU history schema');
+  const supported=new Set(Object.keys(h.data).sort().slice(-30).flatMap(d=>Object.keys(h.data[d])));
+  const codes=nbu.data.filter(v=>supported.has(v.cc)&&valid(v.rate)).map(v=>v.cc);
+  const end=new Date(today+'T00:00:00Z');let added=0;const failures=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(+end-i*86400000).toISOString().slice(0,10);if(codes.every(c=>valid(h.data[d]?.[c])))continue;
+    try{const u='https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?date='+d.replaceAll('-','')+'&json';const r=await fetch(u,{signal:AbortSignal.timeout(12000),headers:{Accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status);const rows=await r.json();if(!Array.isArray(rows))throw Error('Expected NBU list');const label=d.split('-').reverse().join('.');for(const v of rows){if(v.exchangedate!==label||!codes.includes(v.cc)||!valid(v.rate)||valid(h.data[d]?.[v.cc]))continue;const val=Math.round(v.rate*10000)/10000;if(!valid(val))continue;(h.data[d]??={})[v.cc]=val;added++;}}
+    catch(e){failures.push({date:d,error:e.message});}
+  }
+  if(added){h.updatedAt=new Date().toISOString();await save(file,h);}
+  return {added,failures};
 }
 async function main(){
   // Read the previous report before updating. Invalid input JSON aborts before collectors run.
@@ -126,17 +140,29 @@ async function main(){
   try{
     await stage('core','fetch-core.mjs',{},3);
     await stage('banks','fetch.js',{NBU_FETCH_MODE:'banks'},9);
-    await stage('stocks','fetch-stocks.mjs',{NBU_STOCK_BACKFILL:process.env.NBU_STOCK_BACKFILL==='1'?'1':'0'},4);
-    if(forceHistory||diagnostic||report.dailyAttempts.extras!==today){
-      report.dailyAttempts.extras=today;await stage('extras_and_nbu_history','fetch.js',{NBU_FETCH_MODE:'extras'},5);
-    }else report.stages.extras_and_nbu_history={status:'daily_attempt_already_made'};
+    if(report.stages.banks.status==='finished')await stage('bank_fallbacks','bank-fallbacks.mjs',{NBU_UPDATE_STARTED:started},8);
+    await stage('stocks','fetch-stocks.mjs',{NBU_STOCK_BACKFILL:process.env.NBU_STOCK_BACKFILL==='1'?'1':'0'},6);
+    // Extras are quick and NBU history checks for new dates itself. Retry on every run.
+    await stage('extras_and_nbu_history','fetch.js',{NBU_FETCH_MODE:'extras'},5);
+    try{report.nbuRecentRepair=await repairNbuRecent();}catch(e){report.nbuRecentRepair={error:e.message};}
     if(forceHistory||diagnostic||report.dailyAttempts.crypto!==today){
-      report.dailyAttempts.crypto=today;await stage('crypto_history','fetch-crypto-history.mjs',{NBU_CRYPTO_BACKFILL_PAGES:forceHistory?'2':'1'},8);
-    }else report.stages.crypto_history={status:'daily_attempt_already_made'};
+      await stage('crypto_history','fetch-crypto-history.mjs',{NBU_CRYPTO_BACKFILL_PAGES:forceHistory?'2':'1'},8);
+      const h=await maybe('data/crypto-history-status.json');
+      if(report.stages.crypto_history.status==='finished'&&h&&Date.parse(h.checkedAt)>=Date.parse(started)&&h.updated===h.total)report.dailyAttempts.crypto=today;
+    }else report.stages.crypto_history={status:'daily_success_already_recorded'};
+    if(forceHistory||diagnostic||report.dailyAttempts.registry!==today){
+      await stage('bank_registry','bank-registry.mjs',{},2);
+      if(report.stages.bank_registry.status==='finished')report.dailyAttempts.registry=today;
+    }else report.stages.bank_registry={status:'daily_success_already_recorded'};
+    if(!diagnostic&&['all','kraken','binance'].includes(archive)){
+      if(archive!=='binance')await stage('kraken_archive','import-crypto-archives.py',{},20,['--kraken-remote']);
+      if(archive!=='kraken')await stage('binance_archive','import-crypto-archives.py',{},40,['--binance-all']);
+      await stage('archive_coverage','crypto-history-coverage.py',{},2);
+    }
     await stage('bank_health','bank-health.mjs',{},1);
   }finally{await guard(before);}
   await collectReports();
-  if(diagnostic){await stage('bank_browser_diagnostics','bank-diagnostics.mjs',{BANK_IDS:process.env.BANK_IDS||'all'},35);await save('diagnostics/update-report.json',report);}
+  if(diagnostic){await stage('bank_browser_diagnostics','bank-diagnostics.mjs',{BANK_IDS:process.env.BANK_IDS||'all'},48);await save('diagnostics/update-report.json',report);}
   else await save(reportFile,report);
   const lines=['## NBU Rate — звіт',`- Режим: ${report.mode}`, ...Object.entries(report.stages).map(([k,v])=>`- ${k}: ${v.status}${v.seconds===undefined?'':` (${v.seconds}s)`}`),'','### Джерела'];
   for(const [id,r] of Object.entries(report.sources)){
@@ -144,7 +170,12 @@ async function main(){
     const v=r.value;lines.push(`- ${id}: ${r.current?'поточна перевірка':'попередній звіт'}${Number.isFinite(v.updated)?` ${v.updated}/${v.total}`:''}${Array.isArray(v.failures)?` — ${v.failures.length} помилок`:''}`);
   }
   lines.push('','### Банки — помилки (див. час звіту)');for(const b of report.bankIssues||[])lines.push(`- ${b.bank}: ${b.category} — ${String(b.reason||'unknown').replace(/\n/g,' ')}`);
+  lines.push('','### Резервні парсери');
+  for(const [id,b] of Object.entries(report.sources['bank-fallback-status']?.value?.banks||{}))lines.push(`- ${id}: ${b.status} — ${b.attempts?.map(a=>`${a.url}: ${a.http??''} ${a.status}${a.reason?' '+a.reason:''}`).join('; ')||b.reason||''}`);
+  const stocks=report.sources['stocks-status']?.value;if(stocks)lines.push('',`### Акції: нові ${stocks.updated}, без змін ${stocks.unchanged??0}, старі джерела ${stocks.older??0}, помилки ${Object.keys(stocks.errors||{}).length}`);
+  if(report.nbuRecentRepair)lines.push('',`### НБУ: доповнення останніх 7 днів — ${JSON.stringify(report.nbuRecentRepair)}`);
   lines.push('','### Захист історії',`- Відновлень: ${report.historyProtection.length}`);
+  for(const h of report.historyProtection)lines.push(`- ${h.file}: ${h.action}${h.count==null?'':` (${h.count})`}${h.reason?' — '+h.reason:''}`);
   const summary=lines.join('\n')+'\n';console.log(summary);if(process.env.GITHUB_STEP_SUMMARY)await fs.appendFile(process.env.GITHUB_STEP_SUMMARY,summary);
 }
 if(process.argv.includes('--self-test')){
