@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-27T14:02:49.151Z",
-  "runId": "46011776690",
+  "checkedAt": "2026-11-27T18:44:32.539Z",
+  "runId": "46051233328",
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -14,6 +14,12 @@
         }
       ],
       "reason": "no_unambiguous_rates"
+    },
+    "ukrgas": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
+      "attempts": [],
+      "reason": "No fallback configured"
     },
     "raif": {
       "status": "not_updated",
@@ -77,6 +83,12 @@
         }
       ],
       "reason": "skipped_restricted"
+    },
+    "grant": {
+      "status": "not_updated",
+      "primaryReason": "https://www.grant.ua/: HTTP 403",
+      "attempts": [],
+      "reason": "No fallback configured"
     },
     "vostok": {
       "status": "not_updated",
