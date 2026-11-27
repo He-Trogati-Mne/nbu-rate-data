@@ -1,21 +1,21 @@
 {
-  "checkedAt": "2026-11-27T03:52:53.334Z",
+  "checkedAt": "2026-11-27T06:09:04.471Z",
   "status": "not_updated",
   "attempts": [
     {
       "tag": "v3+symbols",
       "error": "fetch failed",
-      "ms": 93
+      "ms": 215
     },
     {
       "tag": "v3-full",
       "error": "fetch failed",
-      "ms": 68
+      "ms": 58
     },
     {
       "tag": "v2-legacy",
       "error": "fetch failed",
-      "ms": 76
+      "ms": 46
     }
   ]
 }
