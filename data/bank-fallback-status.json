@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-28T07:19:11.629Z",
-  "runId": "46120378638",
+  "checkedAt": "2026-11-28T09:50:58.826Z",
+  "runId": "46132106654",
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -151,12 +151,6 @@
       ],
       "reason": "skipped_restricted"
     },
-    "family": {
-      "status": "not_updated",
-      "primaryReason": "https://www.fbank.com.ua/: HTTP 403",
-      "attempts": [],
-      "reason": "No independently verified bank buy/sell source configured"
-    },
     "trust-capital": {
       "status": "not_updated",
       "primaryReason": "https://www.tc-bank.com/: HTTP 403",
@@ -173,6 +167,12 @@
         }
       ],
       "reason": "http_error"
+    },
+    "family": {
+      "status": "not_updated",
+      "primaryReason": "https://www.fbank.com.ua/: HTTP 403",
+      "attempts": [],
+      "reason": "No independently verified bank buy/sell source configured"
     },
     "komin": {
       "status": "not_updated",
