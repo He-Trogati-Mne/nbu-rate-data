@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-28T09:50:58.765Z",
-  "runId": "46132106654",
+  "checkedAt": "2026-11-28T10:56:12.749Z",
+  "runId": "46137220830",
   "updated": 32,
   "refreshed": 32,
   "total": 48,
@@ -70,15 +70,6 @@
       ],
       "rateDate": null
     },
-    "ukrgas": {
-      "status": "updated",
-      "source": "https://www.ukrgasbank.com/",
-      "via": "html",
-      "currencies": [
-        "EUR"
-      ],
-      "rateDate": null
-    },
     "pivdenny": {
       "status": "not_updated",
       "reason": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
@@ -97,6 +88,15 @@
         "reason": "http_error"
       }
     },
+    "ukrgas": {
+      "status": "updated",
+      "source": "https://www.ukrgasbank.com/",
+      "via": "html",
+      "currencies": [
+        "EUR"
+      ],
+      "rateDate": null
+    },
     "ukrexim": {
       "status": "updated",
       "source": "https://www.eximb.com/ua/",
@@ -107,16 +107,6 @@
         "GBP"
       ],
       "rateDate": null
-    },
-    "oschad": {
-      "status": "updated",
-      "source": "https://www.oschadbank.ua/msb/currency-rate",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": "2026-11-28"
     },
     "lviv": {
       "status": "not_updated",
@@ -135,6 +125,16 @@
         ],
         "reason": "http_error"
       }
+    },
+    "oschad": {
+      "status": "updated",
+      "source": "https://www.oschadbank.ua/msb/currency-rate",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": "2026-11-28"
     },
     "credit-agricole": {
       "status": "updated",
@@ -182,17 +182,6 @@
       "rateDate": "2026-11-28",
       "rateType": "card"
     },
-    "kredo": {
-      "status": "updated",
-      "source": "https://kredobank.com.ua/info/kursy-valyut/commercial",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "PLN"
-      ],
-      "rateDate": null
-    },
     "otp": {
       "status": "updated",
       "source": "https://www.otpbank.com.ua/",
@@ -232,6 +221,17 @@
       ],
       "rateDate": null
     },
+    "kredo": {
+      "status": "updated",
+      "source": "https://kredobank.com.ua/info/kursy-valyut/commercial",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "PLN"
+      ],
+      "rateDate": null
+    },
     "piraeus": {
       "status": "updated",
       "source": "https://www.piraeusbank.ua/",
@@ -264,6 +264,16 @@
       ],
       "rateDate": "2026-11-28"
     },
+    "alliance": {
+      "status": "updated",
+      "source": "https://alb.ua/uk",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
     "ukrcapital": {
       "status": "updated",
       "source": "https://www.ukrcapital.com.ua/",
@@ -276,16 +286,6 @@
       ],
       "rateDate": null
     },
-    "alliance": {
-      "status": "updated",
-      "source": "https://www.alb.ua/",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
     "grant": {
       "status": "updated",
       "source": "https://www.grant.ua/",
@@ -293,17 +293,6 @@
       "currencies": [
         "USD",
         "EUR"
-      ],
-      "rateDate": null
-    },
-    "bank34": {
-      "status": "updated",
-      "source": "https://bank34.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
       ],
       "rateDate": null
     },
@@ -323,6 +312,17 @@
         ],
         "reason": "skipped_restricted"
       }
+    },
+    "bank34": {
+      "status": "updated",
+      "source": "https://bank34.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ],
+      "rateDate": null
     },
     "vostok": {
       "status": "not_updated",
@@ -351,12 +351,12 @@
     },
     "asvio": {
       "status": "not_updated",
-      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "reason": "https://www.asviobank.ua/: page.goto: Timeout 22000ms exceeded.\nCall log:\n  - navigating to \"https://www.asviobank.ua/\", waiting until \"domcontentloaded\"\n",
       "previousUpdatedAt": "2026-11-22T08:41:37.646Z",
       "previousSource": "minfin.com.ua",
       "fallback": {
         "status": "not_updated",
-        "primaryReason": "Не знайдено перевірених курсів після JavaScript",
+        "primaryReason": "https://www.asviobank.ua/: page.goto: Timeout 22000ms exceeded.\nCall log:\n  - navigating to \"https://www.asviobank.ua/\", waiting until \"domcontentloaded\"\n",
         "attempts": [
           {
             "url": "https://www.asviobank.ua/",
@@ -476,16 +476,6 @@
       "previousUpdatedAt": null,
       "previousSource": null
     },
-    "unex": {
-      "status": "updated",
-      "source": "https://unexbank.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
     "bizbank": {
       "status": "not_updated",
       "reason": "https://www.bisbank.com.ua/kurs-valyut/kyyiv/: HTTP 403; https://www.bisbank.com.ua/: HTTP 403",
@@ -503,6 +493,16 @@
         "reason": "skipped_restricted"
       }
     },
+    "unex": {
+      "status": "updated",
+      "source": "https://unexbank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
     "oksi": {
       "status": "updated",
       "source": "https://oxibank.ua/",
@@ -513,15 +513,11 @@
       ],
       "rateDate": null
     },
-    "metabank": {
-      "status": "updated",
-      "source": "https://www.mbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
+    "family": {
+      "status": "not_updated",
+      "reason": "https://www.fbank.com.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-24T22:36:55.923Z",
+      "previousSource": "www.fbank.com.ua"
     },
     "trust-capital": {
       "status": "not_updated",
@@ -559,11 +555,15 @@
       "rateType": "cash",
       "branch": "Головний офіс, м. Київ, вул. Борисоглібська, 5-A"
     },
-    "family": {
-      "status": "not_updated",
-      "reason": "https://www.fbank.com.ua/: HTTP 403",
-      "previousUpdatedAt": "2026-11-24T22:36:55.923Z",
-      "previousSource": "www.fbank.com.ua"
+    "metabank": {
+      "status": "updated",
+      "source": "https://www.mbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
     },
     "sky": {
       "status": "updated",
@@ -626,13 +626,13 @@
     "industrial": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
     "vostok": "Знайдено лише курс НБУ, не банківський курс купівлі/продажу",
     "mtb": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
-    "asvio": "Не знайдено перевірених курсів після JavaScript",
+    "asvio": "https://www.asviobank.ua/: page.goto: Timeout 22000ms exceeded.\nCall log:\n  - navigating to \"https://www.asviobank.ua/\", waiting until \"domcontentloaded\"\n",
     "universal": "https://www.universalbank.com.ua/: HTTP 403",
     "agroprosperis": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
     "avangard": "https://avgd.ua/: HTTP 403",
     "bizbank": "https://www.bisbank.com.ua/kurs-valyut/kyyiv/: HTTP 403; https://www.bisbank.com.ua/: HTTP 403",
-    "trust-capital": "https://www.tc-bank.com/: HTTP 403",
     "family": "https://www.fbank.com.ua/: HTTP 403",
+    "trust-capital": "https://www.tc-bank.com/: HTTP 403",
     "komin": "https://cib.com.ua/uk/about/page/informaciya-pro-bank: page.goto: Timeout 35000ms exceeded.\nCall log:\n  - navigating to \"https://cib.com.ua/uk/about/page/informaciya-pro-bank\", waiting until \"domcontentloaded\"\n"
   },
   "note": "Жодні попередні JSON не видаляються та не отримуються зі сторонніх агрегаторів.",
