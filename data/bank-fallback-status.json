@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-28T06:37:49.512Z",
-  "runId": "46117227912",
+  "checkedAt": "2026-11-28T07:19:11.629Z",
+  "runId": "46120378638",
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -77,12 +77,6 @@
         }
       ],
       "reason": "skipped_restricted"
-    },
-    "grant": {
-      "status": "not_updated",
-      "primaryReason": "https://www.grant.ua/: HTTP 403",
-      "attempts": [],
-      "reason": "No fallback configured"
     },
     "vostok": {
       "status": "not_updated",
