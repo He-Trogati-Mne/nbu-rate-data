@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-11-28T02:42:25.195Z",
-  "runId": "46099114955",
+  "checkedAt": "2026-11-28T05:43:11.606Z",
+  "runId": "46113075169",
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -14,6 +14,12 @@
         }
       ],
       "reason": "no_unambiguous_rates"
+    },
+    "ukrgas": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених курсів після JavaScript",
+      "attempts": [],
+      "reason": "No fallback configured"
     },
     "raif": {
       "status": "not_updated",
@@ -66,6 +72,12 @@
         }
       ],
       "reason": "http_error"
+    },
+    "grant": {
+      "status": "not_updated",
+      "primaryReason": "https://www.grant.ua/: HTTP 403",
+      "attempts": [],
+      "reason": "No fallback configured"
     },
     "industrial": {
       "status": "not_updated",
@@ -120,6 +132,19 @@
         }
       ],
       "reason": "skipped_restricted"
+    },
+    "agroprosperis": {
+      "status": "not_updated",
+      "primaryReason": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
+      "attempts": [
+        {
+          "url": "https://ap-bank.com/page/kurs-valjut-na-sogodni",
+          "http": 200,
+          "tables": 1,
+          "status": "no_unambiguous_rates"
+        }
+      ],
+      "reason": "no_unambiguous_rates"
     },
     "avangard": {
       "status": "not_updated",

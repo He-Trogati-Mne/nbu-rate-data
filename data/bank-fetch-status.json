@@ -1,10 +1,10 @@
 {
-  "checkedAt": "2026-11-28T02:42:25.130Z",
-  "runId": "46099114955",
-  "updated": 33,
-  "refreshed": 33,
+  "checkedAt": "2026-11-28T05:43:11.558Z",
+  "runId": "46113075169",
+  "updated": 30,
+  "refreshed": 30,
   "total": 48,
-  "notUpdated": 15,
+  "notUpdated": 18,
   "banks": {
     "ukrsib": {
       "status": "not_updated",
@@ -36,6 +36,12 @@
       "rateDate": "2026-11-28",
       "rateType": "cash"
     },
+    "ukrgas": {
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених курсів після JavaScript",
+      "previousUpdatedAt": "2026-11-28T02:39:39.158Z",
+      "previousSource": "www.ukrgasbank.com"
+    },
     "raif": {
       "status": "not_updated",
       "reason": "https://raiffeisen.ua/currency: HTTP 403; https://raiffeisen.ua/en/currency?show=1: HTTP 403",
@@ -58,17 +64,15 @@
         "reason": "http_error"
       }
     },
-    "pumb": {
+    "oschad": {
       "status": "updated",
-      "source": "https://about.pumb.ua/info/currency_converter",
-      "via": "html",
+      "source": "https://www.oschadbank.ua/currency-rate",
+      "via": "browser",
       "currencies": [
         "USD",
-        "EUR",
-        "GBP",
-        "PLN"
+        "EUR"
       ],
-      "rateDate": null
+      "rateDate": "2026-11-28"
     },
     "pivdenny": {
       "status": "not_updated",
@@ -88,15 +92,6 @@
         "reason": "http_error"
       }
     },
-    "ukrgas": {
-      "status": "updated",
-      "source": "https://www.ukrgasbank.com/",
-      "via": "html",
-      "currencies": [
-        "EUR"
-      ],
-      "rateDate": null
-    },
     "credit-agricole": {
       "status": "updated",
       "source": "https://credit-agricole.ua/kurs-valyut",
@@ -107,26 +102,17 @@
       ],
       "rateDate": null
     },
-    "ukrexim": {
+    "pumb": {
       "status": "updated",
-      "source": "https://www.eximb.com/ua/",
+      "source": "https://about.pumb.ua/info/currency_converter",
       "via": "html",
       "currencies": [
         "USD",
         "EUR",
-        "GBP"
+        "GBP",
+        "PLN"
       ],
       "rateDate": null
-    },
-    "oschad": {
-      "status": "updated",
-      "source": "https://www.oschadbank.ua/msb/currency-rate",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": "2026-11-28"
     },
     "lviv": {
       "status": "not_updated",
@@ -157,6 +143,17 @@
       "rateDate": "2026-11-28",
       "rateType": "cash"
     },
+    "ukrexim": {
+      "status": "updated",
+      "source": "https://www.eximb.com/ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ],
+      "rateDate": null
+    },
     "pravex": {
       "status": "updated",
       "source": "https://www.intesasanpaolobank.ua/kursy-valyut",
@@ -182,9 +179,30 @@
       "rateDate": "2026-11-28",
       "rateType": "card"
     },
+    "globus": {
+      "status": "updated",
+      "source": "https://globusbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ],
+      "rateDate": null
+    },
     "otp": {
       "status": "updated",
       "source": "https://www.otpbank.com.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
+    "piraeus": {
+      "status": "updated",
+      "source": "https://www.piraeusbank.ua/",
       "via": "html",
       "currencies": [
         "USD",
@@ -221,27 +239,6 @@
       ],
       "rateDate": null
     },
-    "piraeus": {
-      "status": "updated",
-      "source": "https://www.piraeusbank.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "globus": {
-      "status": "updated",
-      "source": "https://globusbank.com.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": null
-    },
     "poltava": {
       "status": "updated",
       "source": "https://poltavabank.com/",
@@ -264,16 +261,6 @@
       ],
       "rateDate": "2026-11-28"
     },
-    "alliance": {
-      "status": "updated",
-      "source": "https://www.alb.ua/",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
     "ukrcapital": {
       "status": "updated",
       "source": "https://www.ukrcapital.com.ua/",
@@ -286,6 +273,22 @@
       ],
       "rateDate": null
     },
+    "alliance": {
+      "status": "updated",
+      "source": "https://www.alb.ua/",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
+    },
+    "grant": {
+      "status": "not_updated",
+      "reason": "https://www.grant.ua/: HTTP 403",
+      "previousUpdatedAt": "2026-11-28T02:40:25.460Z",
+      "previousSource": "www.grant.ua"
+    },
     "bank34": {
       "status": "updated",
       "source": "https://bank34.ua/",
@@ -294,16 +297,6 @@
         "USD",
         "EUR",
         "GBP"
-      ],
-      "rateDate": null
-    },
-    "grant": {
-      "status": "updated",
-      "source": "https://www.grant.ua/",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR"
       ],
       "rateDate": null
     },
@@ -452,15 +445,23 @@
       "rateDate": null
     },
     "agroprosperis": {
-      "status": "updated",
-      "source": "https://ap-bank.com/page/kurs-valjut-na-sogodni",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": "2026-11-28",
-      "rateType": "cash"
+      "status": "not_updated",
+      "reason": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
+      "previousUpdatedAt": "2026-11-28T02:40:38.982Z",
+      "previousSource": "ap-bank.com",
+      "fallback": {
+        "status": "not_updated",
+        "primaryReason": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
+        "attempts": [
+          {
+            "url": "https://ap-bank.com/page/kurs-valjut-na-sogodni",
+            "http": 200,
+            "tables": 1,
+            "status": "no_unambiguous_rates"
+          }
+        ],
+        "reason": "no_unambiguous_rates"
+      }
     },
     "avangard": {
       "status": "not_updated",
@@ -485,9 +486,9 @@
         "reason": "skipped_restricted"
       }
     },
-    "unex": {
+    "metabank": {
       "status": "updated",
-      "source": "https://unexbank.ua/",
+      "source": "https://www.mbank.com.ua/",
       "via": "html",
       "currencies": [
         "USD",
@@ -495,9 +496,9 @@
       ],
       "rateDate": null
     },
-    "metabank": {
+    "unex": {
       "status": "updated",
-      "source": "https://www.mbank.com.ua/",
+      "source": "https://unexbank.ua/",
       "via": "html",
       "currencies": [
         "USD",
@@ -510,29 +511,6 @@
       "reason": "https://www.fbank.com.ua/: HTTP 403",
       "previousUpdatedAt": "2026-11-24T22:36:55.923Z",
       "previousSource": "www.fbank.com.ua"
-    },
-    "oksi": {
-      "status": "updated",
-      "source": "https://oxibank.ua/",
-      "via": "html",
-      "currencies": [
-        "USD",
-        "EUR"
-      ],
-      "rateDate": null
-    },
-    "clearing": {
-      "status": "updated",
-      "source": "https://clhs.com.ua/ua/kursi-valyut",
-      "via": "browser",
-      "currencies": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
-      "rateDate": "2026-11-27",
-      "rateType": "cash",
-      "branch": "Головний офіс, м. Київ, вул. Борисоглібська, 5-A"
     },
     "trust-capital": {
       "status": "not_updated",
@@ -556,6 +534,29 @@
         ],
         "reason": "http_error"
       }
+    },
+    "clearing": {
+      "status": "updated",
+      "source": "https://clhs.com.ua/ua/kursi-valyut",
+      "via": "browser",
+      "currencies": [
+        "USD",
+        "EUR",
+        "GBP"
+      ],
+      "rateDate": "2026-11-27",
+      "rateType": "cash",
+      "branch": "Головний офіс, м. Київ, вул. Борисоглібська, 5-A"
+    },
+    "oksi": {
+      "status": "updated",
+      "source": "https://oxibank.ua/",
+      "via": "html",
+      "currencies": [
+        "USD",
+        "EUR"
+      ],
+      "rateDate": null
     },
     "sky": {
       "status": "updated",
@@ -611,15 +612,18 @@
   },
   "errors": {
     "ukrsib": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
+    "ukrgas": "Не знайдено перевірених курсів після JavaScript",
     "raif": "https://raiffeisen.ua/currency: HTTP 403; https://raiffeisen.ua/en/currency?show=1: HTTP 403",
     "pivdenny": "https://bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/currency-metals-rates: HTTP 403; https://front.bank.com.ua/: HTTP 403; https://bank.com.ua/: HTTP 403",
     "lviv": "https://www.banklviv.com/: HTTP 403",
     "idea": "https://ideabank.ua/uk: HTTP 403; https://ideabank.ua/: HTTP 403",
+    "grant": "https://www.grant.ua/: HTTP 403",
     "industrial": "https://industrialbank.ua/ua/: HTTP 403; https://industrialbank.ua/: HTTP 403",
     "vostok": "Знайдено лише курс НБУ, не банківський курс купівлі/продажу",
     "mtb": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
     "asvio": "Не знайдено перевірених курсів після JavaScript",
     "universal": "https://www.universalbank.com.ua/: HTTP 403",
+    "agroprosperis": "Не знайдено перевірених актуальних курсів USD/EUR у потрібному блоці",
     "avangard": "https://avgd.ua/: HTTP 403",
     "bizbank": "https://www.bisbank.com.ua/kurs-valyut/kyyiv/: HTTP 403; https://www.bisbank.com.ua/: HTTP 403",
     "family": "https://www.fbank.com.ua/: HTTP 403",
@@ -627,6 +631,6 @@
     "komin": "https://cib.com.ua/uk/about/page/informaciya-pro-bank: page.goto: Timeout 35000ms exceeded.\nCall log:\n  - navigating to \"https://cib.com.ua/uk/about/page/informaciya-pro-bank\", waiting until \"domcontentloaded\"\n"
   },
   "note": "Жодні попередні JSON не видаляються та не отримуються зі сторонніх агрегаторів.",
-  "primaryUpdated": 33,
+  "primaryUpdated": 30,
   "fallbackUpdated": 0
 }
